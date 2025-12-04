@@ -34,6 +34,13 @@ registerOption('logLevel',    'INFO',   'Loglevel: could be DEBUG, INFO, WARNING
 
 registerOption('L1Threshold',  0,       'Threshold for L1 matched objects', optionType=VarParsing.varType.int)
 
+SEEDED_PHOTONS_CUTS = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && pt> 30"
+UNSEEDED_PHOTONS_CUTS = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && pt> 22"
+UNIFIED_PHOTON_CUTS = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && pt> 22"  # to be used in case both seeded and unseeded are run in the same job
+SEEDED_ELECTRON_CUTS = SEEDED_PHOTONS_CUTS
+UNSEEDED_ELECTRON_CUTS = UNSEEDED_PHOTONS_CUTS
+UNIFIED_ELECTRON_CUTS = UNSEEDED_PHOTONS_CUTS  # to be used in case both seeded and unseeded are run in the same job
+
 varOptions.parseArguments()
 
 ###################################################################
@@ -92,6 +99,12 @@ options['addSUSY']              = varOptions.includeSUSY and not options['useAOD
 
 options['OUTPUT_FILE_NAME']     = "TnPTree_%s.root" % ("mc" if options['isMC'] else "data")
 
+options['DoTagEleSeededLegMatch'] = False
+options['EleSeededLegFilters']    = None
+options['PHOTON_CUTS'] = UNIFIED_PHOTON_CUTS
+options['ELECTRON_CUTS'] = UNIFIED_ELECTRON_CUTS
+
+
 log.info('outputfile: %s' % options['OUTPUT_FILE_NAME'])
 
 #################################################
@@ -109,6 +122,8 @@ if varOptions.GT == "auto":
     if options['era'] == '2022': options['GLOBALTAG'] = 'auto:phase1_2022_realistic' 
     if options['era'] == '2023preBPIX': options['GLOBALTAG'] = '130X_mcRun3_2023_realistic_v14' 
     if options['era'] == '2023postBPIX': options['GLOBALTAG'] = '130X_mcRun3_2023_realistic_postBPix_v2' 
+    if options['era'] == '2024': options['GLOBALTAG'] = '133X_mcRun3_2024_realistic_v10'
+    if options['era'] == '2025': options['GLOBALTAG'] = '142X_mcRun3_2025_realistic_v7'
   else:
     if options['era'] == '2016':   options['GLOBALTAG'] = '94X_dataRun2_v10'
     if options['era'] == '2017':   options['GLOBALTAG'] = '94X_dataRun2_v11'
@@ -119,6 +134,8 @@ if varOptions.GT == "auto":
     if options['era'] == 'UL2018': options['GLOBALTAG'] = '106X_upgrade2018_realistic_v11_L1v1'
     if options['era'] == '2022': options['GLOBALTAG'] = '124X_dataRun3_Prompt_v10'
     if options['era'] == '2023': options['GLOBALTAG'] = '130X_dataRun3_PromptAnalysis_v1'
+    if options['era'] == '2024': options['GLOBALTAG'] = '150X_dataRun3_Prompt_v2'
+    if options['era'] == '2025': options['GLOBALTAG'] = '150X_dataRun3_Prompt_v1'
 else:
   options['GLOBALTAG'] = varOptions.GT
 
@@ -143,6 +160,38 @@ doubleEle33_leg1_allFilters = {'passHLTEGL1SingleAndDoubleEGNonIsoOrWithEG26With
 
 #HLT_DoubleEle33_CaloIdL_MW
 doubleEle33_leg2_allFilters = {'passHLTDiEG33EtUnseededFilter': cms.vstring('hltDiEG33EtUnseededFilter'), 'passHLTDiEG33HEUnseededFilter': cms.vstring('hltDiEG33HEUnseededFilter'), 'passHLTDiEG33CaloIdLClusterShapeUnseededFilter': cms.vstring('hltDiEG33CaloIdLClusterShapeUnseededFilter'), 'passHLTDiEle33CaloIdLPixelMatchUnseededFilter': cms.vstring('hltDiEle33CaloIdLPixelMatchUnseededFilter')}
+
+
+leg_era_config = {
+  '2022': {
+    'seeded': ['hltEG30LR9Id85b90eHE12R9Id50b80eR9IdLastFilter','hltEG30LIso60CaloId15b35eHE12R9Id50b80eEcalIsoLastFilter'],
+    'unseeded': ['hltEG22Iso60CaloId15b35eHE12R9Id50b80eTrackIsoUnseededLastFilter','hltEG22R9Id85b90eHE12R9Id50b80eR9UnseededLastFilter'],
+  },
+  '2023': {
+    'seeded': ['hltEG30LR9Id85b90eHE12R9Id50b80eR9IdLastFilter','hltEG30LIso60CaloId15b35eHE12R9Id50b80eEcalIsoLastFilter'],
+    'unseeded': ['hltEG22Iso60CaloId15b35eHE12R9Id50b80eTrackIsoUnseededLastFilter','hltEG22R9Id85b90eHE12R9Id50b80eR9UnseededLastFilter'],
+  },
+  '2024': {
+    'seeded': ['hltEG30LR9Id85b90eHE12R9Id50b80eR9IdLastFilter','hltEG30LIso60CaloId15b35eHE12R9Id50b80eEcalIsoLastFilter'],
+    'unseeded': ['hltEG22Iso60CaloId15b35eHE12R9Id50b80eTrackIsoUnseededLastFilter','hltEG22R9Id85b90eHE12R9Id50b80eR9UnseededLastFilter'],
+  },
+  '2025': {
+    'seeded': ['hltEG30LR9Id85b90eHE12R9Id50b80eR9IdLastFilter','hltEG30LIso60CaloId15b35eHE12R9Id50b80eEcalIsoLastFilter'],
+    'unseeded': ['hltEG22Iso60CaloId15b35eHE12R9Id50b80eTrackIsoUnseededLastFilter','hltEG22R9Id85b90eHE12R9Id50b80eR9UnseededLastFilter'],
+  },
+}
+if options['era'] in leg_era_config:
+  options['DoTagEleSeededLegMatch'] = True
+  options['EleSeededLegFilters'] = leg_era_config[options['era']]['seeded']
+  this_era_config = leg_era_config[options['era']]
+  leg_filters = {}
+  postfix = ['', 'L1match']
+  for filterName in this_era_config['seeded'] + this_era_config['unseeded']:
+    for pf in postfix:
+      log.info(f'Adding filter for tag/probe matching: pass{filterName}{pf}')
+      leg_filters[f'pass{filterName}{pf}'] = cms.vstring(filterName)
+else:
+  leg_filters = {}
 
 if '2016' in options['era']:
   options['TnPPATHS']           = cms.vstring("HLT_Ele27_eta2p1_WPTight_Gsf_v*")
@@ -189,7 +238,7 @@ elif '2022' in options['era']:
   options['HLTFILTERSTOMEASURE'].update(doubleEle33_leg1_allFilters)
   options['HLTFILTERSTOMEASURE'].update(doubleEle33_leg2_allFilters)
 
-elif '2023' in options['era']:
+elif '2023' in options['era'] or '2024' in options['era'] or '2025' in options['era']:
   options['TnPPATHS']           = cms.vstring("HLT_Ele30_WPTight_Gsf_v*")
   options['TnPHLTTagFilters']   = cms.vstring("hltEle30WPTightGsfTrackIsoFilter")
   options['TnPHLTProbeFilters'] = cms.vstring()
@@ -200,9 +249,20 @@ elif '2023' in options['era']:
   options['HLTFILTERSTOMEASURE'].update(doubleEle33_leg1_allFilters)
   options['HLTFILTERSTOMEASURE'].update(doubleEle33_leg2_allFilters)
 
+options['HLTFILTERSTOMEASURE'].update(leg_filters)
+
 # Apply L1 matching (using L1Threshold) when flag contains "L1match" in name
 options['ApplyL1Matching']      = any(['L1match' in flag for flag in options['HLTFILTERSTOMEASURE'].keys()])
 options['L1Threshold']          = varOptions.L1Threshold
+
+# settings for dR value used in filter matching
+options['DRSEETING'] = {
+  'DR_DEFAULT': 0.3,
+  'dR_tagEle': 0.1,
+  'dR_tagPho': 0.1,
+  'dR_matchL1': 0.2,
+  'dR_matchL1_EE': 0.2,
+}
 
 
 ###################################################################
@@ -290,7 +350,9 @@ process.tnpEleTrig = cms.EDAnalyzer("TagProbeFitTreeProducer",
                                     tagProbePairs = cms.InputTag("tnpPairingEleHLT"),
                                     probeMatches  = cms.InputTag("genProbeEle"),
                                     allProbes     = cms.InputTag("probeEle"),
-                                    flags         = cms.PSet(),
+                                    flags         = cms.PSet(
+                                      tagMatchSeededLeg = cms.InputTag("tagEleMatchSeededLeg"),
+                                    ),
                                     )
 
 for flag in options['HLTFILTERSTOMEASURE']:

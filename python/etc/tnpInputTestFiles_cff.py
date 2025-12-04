@@ -34,6 +34,22 @@ filesMiniAOD_2016 = {
     'data' : cms.untracked.vstring('file:/eos/cms/store/group/phys_egamma/tnpTuples/testFiles/SingleElectron-Run2016B-17Jul2018_ver2-v1.root'),
 }
 
+filesMiniAOD_2024 = {
+    # /DYto2L-2Jets_MLL-50_TuneCP5_13p6TeV_amcatnloFXFX-pythia8/Run3Winter24MiniAOD-133X_mcRun3_2024_realistic_v10-v2/MINIAODSIM
+    'mc' : cms.untracked.vstring('root://cms-xrd-global.cern.ch//store/mc/Run3Winter24MiniAOD/DYto2L-2Jets_MLL-50_TuneCP5_13p6TeV_amcatnloFXFX-pythia8/MINIAODSIM/133X_mcRun3_2024_realistic_v10-v2/70000/155d86af-6ef4-42bd-bf62-3740e41def71.root'),
+    # /EGamma0/Run2024D-MINIv6NANOv15-v1/MINIAOD
+    'data' : cms.untracked.vstring('root://cms-xrd-global.cern.ch//store/data/Run2024D/EGamma0/MINIAOD/MINIv6NANOv15-v1/110002/aee7d8f5-d6ff-4e18-9bd2-56f014e5f7d7.root')
+}
+
+filesMiniAOD_2025 = {
+    # /DYto2L-4Jets_Par-2J-MLL-50_TuneCP5_13p6TeV_madgraphMLM-pythia8/Run3Winter25MiniAOD-142X_mcRun3_2025_realistic_v7-v2/MINIAODSIM
+    'mc' : cms.untracked.vstring('root://cmsxrootd.fnal.gov//store/mc/Run3Winter25MiniAOD/DYto2L-4Jets_Par-2J-MLL-50_TuneCP5_13p6TeV_madgraphMLM-pythia8/MINIAODSIM/142X_mcRun3_2025_realistic_v7-v2/90000/80c85d6e-e844-47ec-9923-163d7378b948.root'),
+    # 'mc' : cms.untracked.vstring('file:/eos/cms/store/group/phys_higgs/nonresonant_HH/PrivateProd/Yuxiang/TriggerSF/MiniAOD/2025/DYto2L-4Jets_Par-2J-MLL-50_file1.root'),
+    # /EGamma0/Run2025D-PromptReco-v1/MINIAOD
+    'data' : cms.untracked.vstring('root://cmsxrootd.fnal.gov//store/data/Run2025D/EGamma0/MINIAOD/PromptReco-v1/000/395/817/00000/990f0244-7184-48e1-814f-883f425398f7.root'),
+    # 'data' : cms.untracked.vstring('file:/eos/cms/store/group/phys_higgs/nonresonant_HH/PrivateProd/Yuxiang/TriggerSF/MiniAOD/2025/Run2025D_EGamma0_file1.root')
+}
+
 
 # Some miniAOD UL testfiles, which are available now and hopefully don't get deleted too soon
 filesMiniAOD_UL2016preVFP = {

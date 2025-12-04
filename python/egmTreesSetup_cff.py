@@ -27,6 +27,20 @@ def setTagsProbes(process, options):
     else:
         goodPartDef.setGoodParticlesMiniAOD( process, options )
 
+    # dR settings
+    dR_tagEle = 0.1
+    dR_probePho = 0.1
+    dR_probeSC = 0.1
+    dR_matchL1 = 0.2
+    dR_matchL1_EE = 0.2
+    if options['DRSEETING'] != None:
+        dR_settings = options['DRSEETING']
+        dR_tagEle    = dR_settings.get('dR_tagEle',    dR_tagEle)
+        dR_probePho  = dR_settings.get('dR_probePho',  dR_probePho)
+        dR_probeSC   = dR_settings.get('dR_probeSC',   dR_probeSC)
+        dR_matchL1   = dR_settings.get('dR_matchL1',   dR_matchL1)
+        dR_matchL1_EE= dR_settings.get('dR_matchL1_EE',dR_matchL1_EE)
+
 
     ####################### TAG ELECTRON ############################
     process.tagEle = cms.EDProducer(eleHLTProducer,
@@ -34,9 +48,21 @@ def setTagsProbes(process, options):
                                         inputs      = cms.InputTag("tagEleCutBasedTight"),
                                         bits        = cms.InputTag('TriggerResults::' + options['HLTProcessName']),
                                         objects     = cms.InputTag(hltObjects),
-                                        dR          = cms.double(0.3),
+                                        dR          = cms.double(dR_tagEle),
                                         isAND       = cms.bool(True)
                                     )
+
+    # Tagged leg seeded matching if required
+    if options.get('DoTagEleSeededLegMatch', False):
+        seeded_filters = options.get('EleSeededLegFilters', [])
+        process.tagEleMatchSeededLeg = cms.EDProducer(eleHLTProducer,
+                                            filterNames = cms.vstring([f for f in seeded_filters if not f.endswith('L1match')]),
+                                            inputs      = cms.InputTag("tagEle"),
+                                            bits        = cms.InputTag('TriggerResults::' + options['HLTProcessName']),
+                                            objects     = cms.InputTag(hltObjects),
+                                            dR          = cms.double(dR_tagEle),
+                                            isAND       = cms.bool(True)  # AND logic for multiple seeded filters
+                                        )
 
     ##################### PROBE ELECTRONs ###########################
     process.probeEle             = process.tagEle.clone()
@@ -55,8 +81,8 @@ def setTagsProbes(process, options):
                                                   inputs       = cms.InputTag("goodElectrons"),
                                                   objects      = cms.InputTag("caloStage2Digis:EGamma"),
                                                   minET        = cms.double(options['L1Threshold']), #lead eff only
-                                                  dRmatch      = cms.double(0.2), #match L1 online to hlt in EB
-                                                  dRmatchEE    = cms.double(0.2), #match L1 online to hlt in EE
+                                                  dRmatch      = cms.double(dR_matchL1), #match L1 online to hlt in EB
+                                                  dRmatchEE    = cms.double(dR_matchL1_EE), #match L1 online to hlt in EE
                                                   isolatedOnly = cms.bool(False)
       )
       process.probeEleL1matched               = process.probeEle.clone()
@@ -74,7 +100,7 @@ def setTagsProbes(process, options):
                                         inputs      = cms.InputTag("goodPhotons"),
                                         bits        = cms.InputTag('TriggerResults::' + options['HLTProcessName'] ),
                                         objects     = cms.InputTag(hltObjects),
-                                        dR          = cms.double(0.3),
+                                        dR          = cms.double(dR_probePho),
                                         isAND       = cms.bool(True)
                                         )
     if options['useAOD'] : process.probePho = process.goodPhotons.clone()
@@ -85,7 +111,7 @@ def setTagsProbes(process, options):
                                              inputs       = cms.InputTag("goodSuperClusters"),
                                              bits         = cms.InputTag('TriggerResults::' + options['HLTProcessName']),
                                              objects      = cms.InputTag(hltObjects),
-                                             dR           = cms.double(0.3),
+                                             dR           = cms.double(dR_probeSC),
                                              isAND        = cms.bool(True)
                                         )
 
@@ -180,6 +206,10 @@ def setSequences(process, options):
         process.tagEleCutBasedTight       + # note: this one also gets introduced by the egmEleID.setIDs function
         process.tagEle
         )
+    
+    # Add tagged leg seeded matching if required, to run seeded and unseeded in the same job
+    if options.get('DoTagEleSeededLegMatch', False):
+        process.tag_sequence += process.tagEleMatchSeededLeg
 
     import EgammaAnalysis.TnPTreeProducer.egmPhotonIDModules_cff as egmPhoID
     process.pho_sequence  = cms.Sequence(process.goodPhotons)
