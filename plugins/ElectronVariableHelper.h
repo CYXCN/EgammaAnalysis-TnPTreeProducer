@@ -150,8 +150,12 @@ void ElectronVariableHelper<T>::produce(edm::Event & iEvent, const edm::EventSet
 
   std::vector<float> seedGains; // seed gain for scales
 
-  const auto& recHitsEBProd = iEvent.get(recHitsEBToken_);
-  const auto& recHitsEEProd = iEvent.get(recHitsEEToken_);
+  // safe retrieval of recHits: use getByToken and check availability to avoid ProductNotFound
+  edm::Handle<EcalRecHitCollection> recHitsEBH, recHitsEEH;
+  bool hasRecHitsEB = iEvent.getByToken(recHitsEBToken_, recHitsEBH);
+  bool hasRecHitsEE = iEvent.getByToken(recHitsEEToken_, recHitsEEH);
+  const EcalRecHitCollection* recHitsEBProd = hasRecHitsEB ? recHitsEBH.product() : nullptr;
+  const EcalRecHitCollection* recHitsEEProd = hasRecHitsEE ? recHitsEEH.product() : nullptr;
 
   typename std::vector<T>::const_iterator probe, endprobes = probes->end();
 
@@ -260,12 +264,24 @@ void ElectronVariableHelper<T>::produce(edm::Event & iEvent, const edm::EventSet
     // seed gain loop
 
     auto detid = probe->superCluster()->seed()->seed();
-    const auto& coll = probe->isEB() ? recHitsEBProd : recHitsEEProd;
-    auto seed = coll.find(detid);
     float tmpSeedVal = 12.0;
-    if (seed != coll.end()){
-        if (seed->checkFlag(EcalRecHit::kHasSwitchToGain6)) tmpSeedVal = 6.0;
-        if (seed->checkFlag(EcalRecHit::kHasSwitchToGain1)) tmpSeedVal = 1.0;
+    // only access recHits if present
+    if (probe->isEB()) {
+      if (recHitsEBProd) {
+        auto it = recHitsEBProd->find(detid);
+        if (it != recHitsEBProd->end()) {
+          if (it->checkFlag(EcalRecHit::kHasSwitchToGain6)) tmpSeedVal = 6.0;
+          if (it->checkFlag(EcalRecHit::kHasSwitchToGain1)) tmpSeedVal = 1.0;
+        }
+      }
+    } else {
+      if (recHitsEEProd) {
+        auto it = recHitsEEProd->find(detid);
+        if (it != recHitsEEProd->end()) {
+          if (it->checkFlag(EcalRecHit::kHasSwitchToGain6)) tmpSeedVal = 6.0;
+          if (it->checkFlag(EcalRecHit::kHasSwitchToGain1)) tmpSeedVal = 1.0;
+        }
+      }
     }
     seedGains.push_back(tmpSeedVal);
   }
