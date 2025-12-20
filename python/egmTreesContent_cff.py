@@ -38,7 +38,7 @@ EleProbeVariablesToStore = cms.PSet(
     el_sc_e          = cms.string("superCluster().energy"),
     el_sc_rawE       = cms.string("superCluster().rawEnergy"),
     el_sc_esE        = cms.string("superCluster().preshowerEnergy"),
-    el_sc_et         = cms.string("superCluster().energy*sin(superClusterPosition.theta)"),    
+    el_sc_et         = cms.string("superCluster().energy*sin(superCluster.position.theta)"),    
     el_sc_eta        = cms.string("-log(tan(superCluster.position.theta/2))"),
     el_sc_phi        = cms.string("superCluster.phi"),    
     el_sc_abseta     = cms.string("abs(-log(tan(superCluster.position.theta/2)))"),
@@ -198,13 +198,14 @@ PhoProbeVariablesToStore = cms.PSet(
 
 # iso
     ph_chIso    = cms.string("chargedHadronIso"),
+    ph_chIsoPFPV = cms.string("chargedHadronPFPVIso"),
     ph_neuIso   = cms.string("neutralHadronIso"),
     ph_phoIso   = cms.string("photonIso"),
     ph_chWorIso = cms.string("chargedHadronWorstVtxIso"),
 
     # new variable needed for scale and smearing:
     ph_seedGain       = cms.InputTag("phoVarHelper:seedGain"),
-    ph_energyErr      = cms.string("getCorrectedEnergyError(2)"), 
+    ph_energyErr      = cms.string("getCorrectedEnergyError('regression2')"), 
 
 )
 
@@ -232,8 +233,8 @@ TagVariablesToStore = cms.PSet(
     
     ## super cluster quantities
     sc_e      = cms.string("superCluster.energy"),
-    sc_et     = cms.string("superCluster.energy*sin(superClusterPosition.theta)"),    
-    sc_eta    = cms.string("-log(tan(superClusterPosition.theta/2))"),
+    sc_et     = cms.string("superCluster.energy*sin(superCluster.position.theta)"),    
+    sc_eta    = cms.string("-log(tan(superCluster.position.theta/2))"),
     sc_abseta = cms.string("abs(-log(tan(superCluster.position.theta/2)))"),
     
     ## Ele_mHits          = cms.InputTag("eleVarHelper:missinghits"),
@@ -256,6 +257,44 @@ TagVariablesToStore = cms.PSet(
     Ele_energyErr      = cms.string("p4Error('P4_COMBINATION')"), 
     Ele_energyErrEcal  = cms.string("ecalEnergyError"),
     )
+
+TagPhoVariablesToStore = cms.PSet(
+    Pho_eta    = cms.string("eta"),
+    Pho_phi    = cms.string("phi"),
+    Pho_abseta = cms.string("abs(eta)"),
+    Pho_pt     = cms.string("pt"),
+    Pho_et     = cms.string("et"),
+    Pho_e      = cms.string("energy"),
+    Pho_hasPixelSeed = cms.string("hasPixelSeed()"),
+    Pho_passElectronVeto = cms.string("passElectronVeto()"),
+    
+    # super cluster quantities
+    sc_e      = cms.string("superCluster.energy"),
+    sc_et     = cms.string("superCluster.energy*sin(superCluster.position.theta)"),    
+    sc_eta    = cms.string("-log(tan(superCluster.position.theta/2))"),
+    sc_abseta = cms.string("abs(-log(tan(superCluster.position.theta/2)))"),
+
+    # id based
+    Pho_full5x5_r9   = cms.string("full5x5_r9"),
+    Pho_r9            = cms.string("r9"),
+    Pho_sieie         = cms.string("full5x5_sigmaIetaIeta"),
+    Pho_sieip         = cms.string("full5x5_showerShapeVariables.sigmaIetaIphi"),
+    Pho_ESsigma       = cms.string("full5x5_showerShapeVariables.effSigmaRR"),
+    Pho_hoe           = cms.string("hadronicOverEm"),
+    
+    # iso
+    Pho_chIso    = cms.string("chargedHadronIso"),
+    Pho_chIsoPFPV = cms.string("chargedHadronPFPVIso"),
+    Pho_neuIso   = cms.string("neutralHadronIso"),
+    Pho_phoIso   = cms.string("photonIso"),
+    Pho_chWorIso = cms.string("chargedHadronWorstVtxIso"),
+
+    Pho_mva122XV1    = cms.InputTag("photonMVAValueMapProducer:PhotonMVAEstimatorRunIIIWinter22v1Values"),
+
+    # new variable needed for scale and smearing:
+    Pho_seedGain       = cms.InputTag("phoVarHelper:seedGain"),
+    Pho_energyErr      = cms.string("getCorrectedEnergyError('regression2')"), 
+)
 
 CommonStuffForGsfElectronProbe = cms.PSet(
     addEventVariablesInfo   =  cms.bool(True),

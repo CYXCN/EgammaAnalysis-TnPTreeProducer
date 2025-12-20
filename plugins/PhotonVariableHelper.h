@@ -28,7 +28,6 @@ class PhotonVariableHelper : public edm::one::EDProducer<>{
 
 private:
   edm::EDGetTokenT<std::vector<T> > probesToken_;
-  // 光子不需要 vertex 计算 dz/dxy，但如果做 L1 匹配等可能需要 beamspot
   edm::EDGetTokenT<BXVector<l1t::EGamma> > l1EGToken_;
   edm::EDGetTokenT<EcalRecHitCollection> recHitsEBToken_;
   edm::EDGetTokenT<EcalRecHitCollection> recHitsEEToken_;
@@ -41,13 +40,12 @@ PhotonVariableHelper<T>::PhotonVariableHelper(const edm::ParameterSet & iConfig)
   recHitsEBToken_(consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag>("ebRecHits"))),
   recHitsEEToken_(consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag>("eeRecHits")))
 {
-  // 移除径迹相关变量 (dz, dxy, sip, gsfhits, missinghits, kf*)
   produces<edm::ValueMap<float>>("l1e");
   produces<edm::ValueMap<float>>("l1et");
   produces<edm::ValueMap<float>>("l1eta");
   produces<edm::ValueMap<float>>("l1phi");
   
-  // [关键] 保留 Seed Gain
+  // produce seed gain for scale and smearing
   produces<edm::ValueMap<float>>("seedGain");
 }
 
@@ -90,7 +88,6 @@ void PhotonVariableHelper<T>::produce(edm::Event & iEvent, const edm::EventSetup
     float dRmin = 0.3;
 
     for (std::vector<l1t::EGamma>::const_iterator l1Cand = l1Cands->begin(0); l1Cand != l1Cands->end(0); ++l1Cand) {
-      // Photon 也有 superCluster()
       float dR = deltaR(l1Cand->eta(), l1Cand->phi() , probe->superCluster()->eta(), probe->superCluster()->phi());
       if (dR < dRmin) {
         dRmin = dR;
@@ -105,14 +102,10 @@ void PhotonVariableHelper<T>::produce(edm::Event & iEvent, const edm::EventSetup
     l1EtaVals.push_back(l1eta);
     l1PhiVals.push_back(l1phi);
 
-    // --- Seed Gain Logic (完全相同) ---
-    // Photon 的 SuperCluster 结构与 Electron 相同
+    // --- Seed Gain Logic same as electron ---
     auto detid = probe->superCluster()->seed()->seed();
     float tmpSeedVal = 12.0;
     
-    // Check Barrel or Endcap logic
-    // 注意: Photon 可能没有 isEB() 快捷方法，取决于版本。
-    // 使用 DetId 判断更稳健，或者用 probe->isEB() 如果 pat::Photon 支持
     bool isEB = (detid.subdetId() == EcalBarrel);
 
     if (isEB) {

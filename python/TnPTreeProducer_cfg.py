@@ -26,6 +26,7 @@ registerOption('doTrigger',   False,    'Include tree for trigger SF')
 registerOption('doRECO',      False,    'Include tree for Reco SF (requires AOD)')
 registerOption('calibEn',     False,    'Use EGM smearer to calibrate photon and electron energy')
 registerOption('includeSUSY', False,    'Add also the variables used by SUSY')
+registerOption('isTagPho',    False,    'Use photon as tag')
 
 registerOption('HLTname',     'HLT',    'HLT process name (default HLT)', optionType=VarParsing.varType.string) # HLTname was HLT2 in now outdated reHLT samples
 registerOption('GT',          'auto',   'Global Tag to be used', optionType=VarParsing.varType.string)
@@ -36,8 +37,8 @@ registerOption('L1Threshold',  0,       'Threshold for L1 matched objects', opti
 
 SEEDED_PHOTONS_CUTS = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && pt> 30"
 UNSEEDED_PHOTONS_CUTS = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && pt> 22"
-UNIFIED_PHOTON_CUTS = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && pt> 20"  # to be used in case both seeded and unseeded are run in the same job
-#move from 22 to 20 to cover the possible scale and smearing migration
+UNIFIED_PHOTON_CUTS = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && pt> 18"  # to be used in case both seeded and unseeded are run in the same job
+#move from 20 to 18 to cover the possible scale and smearing migration
 SEEDED_ELECTRON_CUTS = SEEDED_PHOTONS_CUTS
 UNSEEDED_ELECTRON_CUTS = UNSEEDED_PHOTONS_CUTS
 UNIFIED_ELECTRON_CUTS = UNSEEDED_PHOTONS_CUTS  # to be used in case both seeded and unseeded are run in the same job
@@ -82,10 +83,11 @@ options['ELECTRON_COLL']        = "gedGsfElectrons" if options['useAOD'] else "s
 options['PHOTON_COLL']          = "gedPhotons" if options['useAOD'] else "slimmedPhotons"
 options['SUPERCLUSTER_COLL']    = "reducedEgamma:reducedSuperClusters" ### not used in AOD
 
-options['ELECTRON_CUTS']        = "ecalEnergy*sin(superClusterPosition.theta)>5.0 &&  (abs(-log(tan(superClusterPosition.theta/2)))<2.5)"
+options['ELECTRON_CUTS']        = "ecalEnergy*sin(superCluster.position.theta)>5.0 &&  (abs(-log(tan(superCluster.position.theta/2)))<2.5)"
 options['SUPERCLUSTER_CUTS']    = "abs(eta)<2.5 &&  et>5.0"
 options['PHOTON_CUTS']          = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && pt> 10"
-options['ELECTRON_TAG_CUTS']    = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && !(1.4442<=abs(-log(tan(superClusterPosition.theta/2)))<=1.566) && pt >= 30.0"
+options['ELECTRON_TAG_CUTS']    = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && !(1.4442<=abs(-log(tan(superCluster.position.theta/2)))<=1.566) && pt >= 30.0"
+options['PHOTON_TAG_CUTS']      = options['ELECTRON_TAG_CUTS']
 
 options['MAXEVENTS']            = cms.untracked.int32(varOptions.maxEvents)
 # options['MAXEVENTS']            = cms.untracked.int32(5000)
@@ -98,11 +100,12 @@ options['DEBUG']                = False
 options['isMC']                 = varOptions.isMC
 options['UseCalibEn']           = varOptions.calibEn
 options['addSUSY']              = varOptions.includeSUSY and not options['useAOD']
+options['isTagPho']             = varOptions.isTagPho
 
 options['OUTPUT_FILE_NAME']     = "TnPTree_%s.root" % ("mc" if options['isMC'] else "data")
 
-options['DoTagEleSeededLegMatch'] = False
-options['EleSeededLegFilters']    = None
+options['DoTagSeededLegMatch'] = False
+options['TagSeededLegFilters']    = None
 options['PHOTON_CUTS'] = UNIFIED_PHOTON_CUTS
 options['ELECTRON_CUTS'] = UNIFIED_ELECTRON_CUTS
 
@@ -183,8 +186,8 @@ leg_era_config = {
   },
 }
 if options['era'] in leg_era_config:
-  options['DoTagEleSeededLegMatch'] = True
-  options['EleSeededLegFilters'] = leg_era_config[options['era']]['seeded']
+  options['DoTagSeededLegMatch'] = True
+  options['TagSeededLegFilters'] = leg_era_config[options['era']]['seeded']
   this_era_config = leg_era_config[options['era']]
   leg_filters = {}
   postfix = ['', 'L1match']
@@ -301,6 +304,11 @@ pileUpSetup.setPileUpConfiguration(process, options)
 import EgammaAnalysis.TnPTreeProducer.egmTreesContent_cff as tnpVars
 if options['useAOD']: tnpVars.setupTnPVariablesForAOD()
 mcTruthCommonStuff = tnpVars.getTnPVariablesForMCTruth(options['isMC'])
+if options['isTagPho']:
+    tnpVars.CommonStuffForGsfElectronProbe.tagVariables = tnpVars.TagPhoVariablesToStore
+    tnpVars.CommonStuffForPhotonProbe.tagVariables = tnpVars.TagPhoVariablesToStore
+    tnpVars.CommonStuffForSuperClusterProbe.tagVariables = tnpVars.TagPhoVariablesToStore
+    mcTruthCommonStuff.tagMatches = cms.InputTag("genTagPho")
 
 ###################################################################
 ## Import Tnp setup
@@ -332,8 +340,15 @@ process.maxEvents = cms.untracked.PSet( input = options['MAXEVENTS'])
 ## Define sequences and TnP pairs
 ###################################################################
 process.cand_sequence = cms.Sequence( process.init_sequence + process.tag_sequence )
-if options['DoEleID'] or options['DoTrigger'] : process.cand_sequence += process.ele_sequence
-if options['DoPhoID']                         : process.cand_sequence += process.pho_sequence
+add_ele_sequence = False
+add_pho_sequence = False
+if options['DoTrigger']:
+  if options['isTagPho']:
+    add_pho_sequence = True
+  else:
+    add_ele_sequence = True
+if options['DoEleID'] or add_ele_sequence     : process.cand_sequence += process.ele_sequence
+if options['DoPhoID'] or add_pho_sequence     : process.cand_sequence += process.pho_sequence
 if options['DoTrigger']                       : process.cand_sequence += process.hlt_sequence
 if options['DoRECO']                          : process.cand_sequence += process.sc_sequence
 
@@ -348,17 +363,19 @@ if options['DoPhoID']   : process.tnpPairs_sequence *= process.tnpPairingPhoIDs
 ##########################################################################
 process.tnpEleTrig = cms.EDAnalyzer("TagProbeFitTreeProducer",
                                     mcTruthCommonStuff,
-                                    tnpVars.CommonStuffForGsfElectronProbe,
+                                    tnpVars.CommonStuffForGsfElectronProbe if not options['isTagPho'] else tnpVars.CommonStuffForPhotonProbe,
                                     tagProbePairs = cms.InputTag("tnpPairingEleHLT"),
-                                    probeMatches  = cms.InputTag("genProbeEle"),
-                                    allProbes     = cms.InputTag("probeEle"),
+                                    probeMatches  = cms.InputTag("genProbeEle") if not options['isTagPho'] else cms.InputTag("genProbePho"),
+                                    allProbes     = cms.InputTag("probeEle") if not options['isTagPho'] else cms.InputTag("probePho"),
                                     flags         = cms.PSet(
-                                      tagMatchSeededLeg = cms.InputTag("tagEleMatchSeededLeg"),
+                                      tagMatchSeededLeg = cms.InputTag("tagEleMatchSeededLeg") if not options['isTagPho'] else cms.InputTag("tagPhoMatchSeededLeg"),
                                     ),
                                     )
 
 for flag in options['HLTFILTERSTOMEASURE']:
-  setattr(process.tnpEleTrig.flags, flag, cms.InputTag(flag))
+  # FIX: Only add flags that actually exist in the process.
+  if hasattr(process, flag):
+    setattr(process.tnpEleTrig.flags, flag, cms.InputTag(flag))
 
 
 process.tnpEleReco = cms.EDAnalyzer("TagProbeFitTreeProducer",
@@ -388,8 +405,14 @@ process.tnpEleIDs = cms.EDAnalyzer("TagProbeFitTreeProducer",
 # Simply look which probeEleX modules were made in egmElectronIDModules_cff.py and convert them into a passingX boolean in the tree 
 for probeEleModule in str(process.ele_sequence).split('+'):
   if not 'probeEle' in probeEleModule or probeEleModule in ['probeEle', 'probeEleL1matched']: continue
-  setattr(process.tnpEleTrig.flags, probeEleModule.replace('probeEle', 'passing'), cms.InputTag(probeEleModule))
+  if not options['isTagPho']:
+    setattr(process.tnpEleTrig.flags, probeEleModule.replace('probeEle', 'passing'), cms.InputTag(probeEleModule))
   setattr(process.tnpEleIDs.flags,  probeEleModule.replace('probeEle', 'passing'), cms.InputTag(probeEleModule))
+# do the same for probPho modules when isTagPho
+if options['isTagPho']:
+  for probPhoModule in str(process.pho_sequence).split('+'):
+    if not 'probePho' in probPhoModule or probPhoModule=='probePho': continue
+    setattr(process.tnpEleTrig.flags, probPhoModule.replace('probePho', 'passing'), cms.InputTag(probPhoModule))
 
 
 
