@@ -73,6 +73,13 @@ def setGoodParticlesMiniAOD(process, options):
                                           ebRecHits        = cms.InputTag("reducedEgamma","reducedEBRecHits","PAT"),
                                           eeRecHits        = cms.InputTag("reducedEgamma","reducedEERecHits","PAT")
                                           )
+    
+    process.phoVarHelper = cms.EDProducer("PatPhotonVariableHelper",
+                                            probes           = cms.InputTag(options['PHOTON_COLL']),
+                                            l1EGColl         = cms.InputTag("caloStage2Digis:EGamma"),
+                                            ebRecHits        = cms.InputTag("reducedEgamma", "reducedEBRecHits"),
+                                            eeRecHits        = cms.InputTag("reducedEgamma", "reducedEERecHits"),
+    )
 
     ####################  Electron collection
     process.goodElectrons = cms.EDFilter("PATElectronRefSelector",

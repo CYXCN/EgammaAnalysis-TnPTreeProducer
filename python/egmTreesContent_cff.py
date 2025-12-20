@@ -142,6 +142,10 @@ EleProbeVariablesToStore = cms.PSet(
     el_seedGain       = cms.InputTag("eleVarHelper:seedGain"),
     #csev
 
+    # new variable needed for scale and smearing:
+    el_energyErr      = cms.string("p4Error('P4_COMBINATION')"), 
+    el_energyErrEcal  = cms.string("ecalEnergyError"),
+
     )
 
 PhoProbeVariablesToStore = cms.PSet(
@@ -197,6 +201,11 @@ PhoProbeVariablesToStore = cms.PSet(
     ph_neuIso   = cms.string("neutralHadronIso"),
     ph_phoIso   = cms.string("photonIso"),
     ph_chWorIso = cms.string("chargedHadronWorstVtxIso"),
+
+    # new variable needed for scale and smearing:
+    ph_seedGain       = cms.InputTag("phoVarHelper:seedGain"),
+    ph_energyErr      = cms.string("getCorrectedEnergyError(2)"), 
+
 )
 
 if not isReleaseAbove(10, 6): # old way of accessing these in CMSSW_10_2
@@ -241,7 +250,11 @@ TagVariablesToStore = cms.PSet(
     #Ele_noIsoMVA94XV2   = cms.InputTag("electronMVAValueMapProducer:ElectronMVAEstimatorRun2Fall17NoIsoV2Values"), 
     #Ele_IsoMVA94XV2     = cms.InputTag("electronMVAValueMapProducer:ElectronMVAEstimatorRun2Fall17IsoV2Values"),
     Ele_noIso122X       = cms.InputTag("electronMVAValueMapProducer:ElectronMVAEstimatorRun2RunIIIWinter22NoIsoV1Values"),
-    Ele_Iso122X       = cms.InputTag("electronMVAValueMapProducer:ElectronMVAEstimatorRun2RunIIIWinter22IsoV1Values")
+    Ele_Iso122X       = cms.InputTag("electronMVAValueMapProducer:ElectronMVAEstimatorRun2RunIIIWinter22IsoV1Values"),
+
+    # new variable needed for scale and smearing:
+    Ele_energyErr      = cms.string("p4Error('P4_COMBINATION')"), 
+    Ele_energyErrEcal  = cms.string("ecalEnergyError"),
     )
 
 CommonStuffForGsfElectronProbe = cms.PSet(
