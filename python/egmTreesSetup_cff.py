@@ -247,6 +247,8 @@ def setTagsProbes(process, options):
 def setSequences(process, options):
 
     process.init_sequence = cms.Sequence()
+    if options.get('isTagPho', False) and not options['useAOD']:
+        process.init_sequence += process.patObjectCrossLinker
     if options['UseCalibEn']:
         process.enCalib_sequence = cms.Sequence(
             process.regressionApplication  *
@@ -326,6 +328,16 @@ def setupTreeMaker(process, options) :
     process.hltFilter.throw = cms.bool(True)
     process.hltFilter.HLTPaths = options['TnPPATHS']
     process.hltFilter.TriggerResultsTag = cms.InputTag("TriggerResults","",options['HLTProcessName'])
+
+    if options.get('isTagPho', False) and not options['useAOD']:
+        process.patObjectCrossLinker = cms.EDProducer("PATObjectCrossLinker",
+            electrons = cms.InputTag("slimmedElectrons"),
+            photons = cms.InputTag("slimmedPhotons"),
+            muons = cms.InputTag("slimmedMuons"),
+            jets = cms.InputTag("slimmedJets"),
+            taus = cms.InputTag("slimmedTaus"),
+        )
+        options['PHOTON_COLL'] = "patObjectCrossLinker:photons"
 
     setTagsProbes( process, options )
     setSequences(  process, options )

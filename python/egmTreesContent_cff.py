@@ -156,6 +156,8 @@ PhoProbeVariablesToStore = cms.PSet(
     ph_hasPixelSeed = cms.string("hasPixelSeed()"),
     ph_passElectronVeto = cms.string("passElectronVeto()"),
 
+    ph_electronIdx = cms.string("?hasUserCand('electron')?userCand('electron').key():-1"),
+
 ## super cluster quantities
     ph_sc_energy    = cms.string("superCluster.energy"),
     ph_sc_rawEnergy = cms.string("superCluster.rawEnergy"),
@@ -267,6 +269,8 @@ TagPhoVariablesToStore = cms.PSet(
     Pho_e      = cms.string("energy"),
     Pho_hasPixelSeed = cms.string("hasPixelSeed()"),
     Pho_passElectronVeto = cms.string("passElectronVeto()"),
+
+    Pho_electronIdx = cms.string("?hasUserCand('electron')?userCand('electron').key():-1"),
     
     # super cluster quantities
     sc_e      = cms.string("superCluster.energy"),
