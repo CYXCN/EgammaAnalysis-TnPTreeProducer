@@ -196,7 +196,7 @@ def setTagsProbes(process, options):
         if options['isTagPho']:
             process.genPho = cms.EDFilter("GenParticleSelector",
                                           src = cms.InputTag(genParticles),
-                                          cut = cms.string(cut_gen_pho),
+                                          cut = cms.string(cut_gen_flashgg), # in photon collection, we indeeded want electron
                                           )
             process.genTagPho = cms.EDProducer("MCMatcher",
                                             src      = cms.InputTag("tagPho"),
