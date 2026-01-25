@@ -75,6 +75,20 @@ def setTagsProbes(process, options):
                                 isAND       = cms.bool(False)  if orForSeeded else cms.bool(True)
                             )
             setattr(process, matchSeededLegName, moduleSeeded)
+
+            do_seperate = True
+            if do_seperate:
+                for filter in filters_to_use:
+                    singleFilterName = matchSeededLegName + filter.replace('::','_').replace('*','All').replace('.','_').replace('-','_')
+                    moduleSingle = cms.EDProducer(producerType,
+                                        filterNames = cms.vstring(filter),
+                                        inputs      = cms.InputTag(tagName),
+                                        bits        = cms.InputTag('TriggerResults::' + options['HLTProcessName']),
+                                        objects     = cms.InputTag(hltObjects),
+                                        dR          = cms.double(dR_tag),
+                                        isAND       = cms.bool(False)  if orForSeeded else cms.bool(True)
+                                    )
+                    setattr(process, singleFilterName, moduleSingle)
     
     ##################### TAG ELECTRONs ###########################
     setupTag(process, options, "Ele", "tagEleCutBasedTight", eleHLTProducer, dR_tagEle)
@@ -202,7 +216,7 @@ def setTagsProbes(process, options):
                                             src      = cms.InputTag("tagPho"),
                                             matched  = cms.InputTag("genPho"),
                                             mcStatus = cms.vint32(),
-                                            mcPdgId  = cms.vint32(22),
+                                            mcPdgId  = cms.vint32(),
                                             checkCharge = cms.bool(False),
                                             maxDeltaR   = cms.double(0.20),   # Minimum deltaR for the match
                                             maxDPtRel   = cms.double(50.0),    # Minimum deltaPt/Pt for the match
@@ -295,7 +309,16 @@ def setSequences(process, options):
 
     # Add tagged leg seeded matching if required, to run seeded and unseeded in the same job
     if options.get('DoTagSeededLegMatch', False):
-        process.tag_sequence += process.tagEleMatchSeededLeg if not options['isTagPho'] else process.tagPhoMatchSeededLeg
+        tagName = "tagEle" if not options['isTagPho'] else "tagPho"
+        matchSeededLegName = tagName + "MatchSeededLeg"
+        
+        # Add the combined seeded leg match module
+        process.tag_sequence += getattr(process, matchSeededLegName)
+        
+        # Add individual filter match modules if they exist
+        for attr in dir(process):
+            if attr.startswith(matchSeededLegName) and attr != matchSeededLegName:
+                process.tag_sequence += getattr(process, attr)
 
     process.hlt_sequence = cms.Sequence( process.hltFilter )
     for flag in options['HLTFILTERSTOMEASURE']:

@@ -90,7 +90,7 @@ options['ELECTRON_TAG_CUTS']    = "(abs(-log(tan(superCluster.position.theta/2))
 options['PHOTON_TAG_CUTS']      = options['ELECTRON_TAG_CUTS']
 
 options['MAXEVENTS']            = cms.untracked.int32(varOptions.maxEvents)
-# options['MAXEVENTS']            = cms.untracked.int32(5000)
+# options['MAXEVENTS']            = cms.untracked.int32(2000)
 options['DoTrigger']            = varOptions.doTrigger
 options['DoRECO']               = varOptions.doRECO
 options['DoEleID']              = varOptions.doEleID
@@ -367,10 +367,21 @@ process.tnpEleTrig = cms.EDAnalyzer("TagProbeFitTreeProducer",
                                     tagProbePairs = cms.InputTag("tnpPairingEleHLT"),
                                     probeMatches  = cms.InputTag("genProbeEle") if not options['isTagPho'] else cms.InputTag("genProbePho"),
                                     allProbes     = cms.InputTag("probeEle") if not options['isTagPho'] else cms.InputTag("probePho"),
-                                    flags         = cms.PSet(
-                                      tagMatchSeededLeg = cms.InputTag("tagEleMatchSeededLeg") if not options['isTagPho'] else cms.InputTag("tagPhoMatchSeededLeg"),
-                                    ),
+                                    flags         = cms.PSet(),
                                     )
+
+if not hasattr(process.tnpEleTrig, 'tagFlags'):
+    process.tnpEleTrig.tagFlags = cms.PSet()
+tagName = "tagEle" if not options['isTagPho'] else "tagPho"
+matchSeededLegName = tagName + "MatchSeededLeg"
+# fix tag match, now it is correctly stored in tagFlags
+if hasattr(process, matchSeededLegName):
+    setattr(process.tnpEleTrig.tagFlags, 'MatchSeededLeg', cms.InputTag(matchSeededLegName))
+# Add individual seeded leg filter flags if they exist, incase logic changed in future
+for attr in dir(process):
+    if attr.startswith(matchSeededLegName) and attr != matchSeededLegName:
+        flagName = "Match" + attr[len(matchSeededLegName):]
+        setattr(process.tnpEleTrig.tagFlags, flagName, cms.InputTag(attr))
 
 for flag in options['HLTFILTERSTOMEASURE']:
   # FIX: Only add flags that actually exist in the process.

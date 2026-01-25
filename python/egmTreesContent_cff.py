@@ -156,6 +156,8 @@ PhoProbeVariablesToStore = cms.PSet(
     ph_hasPixelSeed = cms.string("hasPixelSeed()"),
     ph_passElectronVeto = cms.string("passElectronVeto()"),
 
+    ph_pt     = cms.string("pt"),
+    ph_phi    = cms.string("phi"),
     ph_electronIdx = cms.string("?hasUserCand('electron')?userCand('electron').key():-1"),
 
 ## super cluster quantities
