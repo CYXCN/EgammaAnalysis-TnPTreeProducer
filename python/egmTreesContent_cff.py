@@ -38,7 +38,7 @@ EleProbeVariablesToStore = cms.PSet(
     el_sc_e          = cms.string("superCluster().energy"),
     el_sc_rawE       = cms.string("superCluster().rawEnergy"),
     el_sc_esE        = cms.string("superCluster().preshowerEnergy"),
-    el_sc_et         = cms.string("superCluster().energy*sin(superClusterPosition.theta)"),    
+    el_sc_et         = cms.string("superCluster().energy*sin(superCluster.position.theta)"),    
     el_sc_eta        = cms.string("-log(tan(superCluster.position.theta/2))"),
     el_sc_phi        = cms.string("superCluster.phi"),    
     el_sc_abseta     = cms.string("abs(-log(tan(superCluster.position.theta/2)))"),
@@ -223,8 +223,8 @@ TagVariablesToStore = cms.PSet(
     
     ## super cluster quantities
     sc_e      = cms.string("superCluster.energy"),
-    sc_et     = cms.string("superCluster.energy*sin(superClusterPosition.theta)"),    
-    sc_eta    = cms.string("-log(tan(superClusterPosition.theta/2))"),
+    sc_et     = cms.string("superCluster.energy*sin(superCluster.position.theta)"),    
+    sc_eta    = cms.string("-log(tan(superCluster.position.theta/2))"),
     sc_abseta = cms.string("abs(-log(tan(superCluster.position.theta/2)))"),
     
     ## Ele_mHits          = cms.InputTag("eleVarHelper:missinghits"),
