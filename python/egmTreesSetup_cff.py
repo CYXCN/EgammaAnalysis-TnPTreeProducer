@@ -294,6 +294,12 @@ def setSequences(process, options):
     process.ele_sequence  = egmEleID.setIDs(process, options)
     process.ele_sequence += cms.Sequence(process.probeEle)
 
+    import EgammaAnalysis.TnPTreeProducer.egmPhotonIDModules_cff as egmPhoID
+    process.pho_sequence  = cms.Sequence(process.goodPhotons)
+    process.pho_sequence += egmPhoID.setIDs(process, options)
+    process.pho_sequence += cms.Sequence(process.probePho)
+
+
     if options['ApplyL1Matching'] and not options['isTagPho']:
       process.ele_sequence += process.goodEleProbesL1
       process.ele_sequence += process.probeEleL1matched
@@ -323,11 +329,6 @@ def setSequences(process, options):
         for attr in dir(process):
             if attr.startswith(matchSeededLegName) and attr != matchSeededLegName:
                 process.tag_sequence += getattr(process, attr)
-
-    import EgammaAnalysis.TnPTreeProducer.egmPhotonIDModules_cff as egmPhoID
-    process.pho_sequence  = cms.Sequence(process.goodPhotons)
-    process.pho_sequence += egmPhoID.setIDs(process, options)
-    process.pho_sequence += cms.Sequence(process.probePho)
 
     process.hlt_sequence = cms.Sequence( process.hltFilter )
     for flag in options['HLTFILTERSTOMEASURE']:
