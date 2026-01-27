@@ -1,7 +1,10 @@
 from CRABClient.UserUtilities import config
 from CRABAPI.RawCommand import crabCommand
 from CRABClient.ClientExceptions import ClientException
-from httplib import HTTPException
+try:
+    from httplib import HTTPException
+except ImportError:
+    from http.client import HTTPException
 
 
 import argparse
@@ -32,9 +35,9 @@ parser.add_argument('crabDir'  , default = None        , help = 'crabDir')
 parser.add_argument('--dry_run', action='store_true'   , help = 'do not hadd, just test')
 
 args = parser.parse_args()
-print args
+print(args)
 if args.crabDir is None :
-    print 'Need to specify a crabDirectory as argument'
+    print('Need to specify a crabDirectory as argument')
     sys.exit(0)
 
 
@@ -62,26 +65,26 @@ dirToCheck = args.crabDir + "/"
 inputTnPCrab = pickle.load(open(dirToCheck+'.requestcache','rb'))
 
 config = None
-if inputTnPCrab.has_key('OriginalConfig'):
+if 'OriginalConfig' in inputTnPCrab:
     config = inputTnPCrab['OriginalConfig'] 
 
-print config
+print(config)
 
 
-dasDataset = string.split(config.Data.inputDataset,'/')[1]
+dasDataset = config.Data.inputDataset.split('/')[1]
 crabName   = 'crab_' + config.General.requestName
 
 
 proc = subprocess.Popen('ls /eos/cms/%s/%s/%s/*/*/*root'%(config.Data.outLFNDirBase,dasDataset,crabName), shell=True, 
-                        stdout=subprocess.PIPE)
+                        stdout=subprocess.PIPE, universal_newlines=True)
 out,err = proc.communicate()
-filelistTmp = string.split(out,'\n')
+filelistTmp = out.split('\n')
 #print filelist
 
 filelist = {}
 for f in filelistTmp:
     if len(f) > 0:
-        jobIdTmp = string.split(f,'_')
+        jobIdTmp = f.split('_')
         jobId = int(jobIdTmp[len(jobIdTmp)-1].split('.root')[0])
         filelist[jobId] = f
 
@@ -94,8 +97,8 @@ statusOut   = None
 if args.s:
     try:
         statusOut = crabCommand('status', dir = dirToCheck )
-    except:
-        print "Crab command status failed ... "
+    except Exception as e:
+        print("Crab command status failed ...", e)
         sys.exit(1)
 
 jobStatus = {}
@@ -122,9 +125,9 @@ for jobId in filelist.keys():
             filelistsDone['failed'].append( filelist[jobId] )
         else:
             filelistsDone['other'].append( filelist[jobId] )
-            print '==> Job: %d in state (not finished): %s but file is already transferred' % (jobId,jobStatus[jobId])
+            print('==> Job: %d in state (not finished): %s but file is already transferred' % (jobId,jobStatus[jobId]))
     else:
-        print '==> SEVERE WARNING: jobId %d does not exist !' % jobId
+        print('==> SEVERE WARNING: jobId %d does not exist !' % jobId)
 
 for jobId in jobStatus.keys():
     if not jobId in filelist.keys():
@@ -142,24 +145,24 @@ for jobId in jobStatus.keys():
 nOnDisk  = len( filelistsDone['finished']) + len(filelistsDone['transferring'] ) + len(filelistsDone['running']) + len(filelistsDone['other']) + len(filelistsDone['failed'])
 nMissing = len( filelistsMissing['finished']) + len(filelistsMissing['transferring'] ) + len(filelistsMissing['running']) + len(filelistsMissing['other']) + len(filelistsMissing['failed'])
 
-print '============== crab summary for job: %s ===============' % config.General.requestName
-print 'On disk : %4d/%4d (%2.1f%%)' % (nOnDisk,len(jobStatus.keys() ),float(nOnDisk)/len(jobStatus.keys() )*100)
-if len(filelistsDone['finished']) > 0    : print ' - crab state finished: ', len(filelistsDone['finished'])
-if len(filelistsDone['transferring']) >0 : print ' - crab state transfer: ', len(filelistsDone['transferring'])
-if len(filelistsDone['running'])     >0  : print ' - crab state running : ', len(filelistsDone['running'])
-if len(filelistsDone['failed'])      >0  : print ' - crab state failed  : ', len(filelistsDone['failed'])
-if len(filelistsDone['other']) > 0       : print ' - crab state ??      : ', len(filelistsDone['other'])
+print('============== crab summary for job: %s ===============' % config.General.requestName)
+print('On disk : %4d/%4d (%2.1f%%)' % (nOnDisk,len(jobStatus.keys() ),float(nOnDisk)/len(jobStatus.keys() )*100))
+if len(filelistsDone['finished']) > 0    : print(' - crab state finished: ', len(filelistsDone['finished']))
+if len(filelistsDone['transferring']) >0 : print(' - crab state transfer: ', len(filelistsDone['transferring']))
+if len(filelistsDone['running'])     >0  : print(' - crab state running : ', len(filelistsDone['running']))
+if len(filelistsDone['failed'])      >0  : print(' - crab state failed  : ', len(filelistsDone['failed']))
+if len(filelistsDone['other']) > 0       : print(' - crab state ??      : ', len(filelistsDone['other']))
 
-print 'Missing : %4d/%4d (%2.1f%%)' % (nMissing,len(jobStatus.keys() ),float(nMissing)/len(jobStatus.keys() )*100)
-if len(filelistsMissing['finished']) > 0    : print ' - crab state finished: ', len(filelistsMissing['finished'])
-if len(filelistsMissing['transferring']) >0 : print ' - crab state transfer: ', len(filelistsMissing['transferring'])
-if len(filelistsMissing['running'])     >0  : print ' - crab state running : ', len(filelistsMissing['running'])
-if len(filelistsMissing['failed'])      >0  : print ' - crab state failed  : ', len(filelistsMissing['failed'])
-if len(filelistsMissing['other']) > 0       : print ' - crab state ??      : ', len(filelistsMissing['other'])
+print('Missing : %4d/%4d (%2.1f%%)' % (nMissing,len(jobStatus.keys() ),float(nMissing)/len(jobStatus.keys() )*100))
+if len(filelistsMissing['finished']) > 0    : print(' - crab state finished: ', len(filelistsMissing['finished']))
+if len(filelistsMissing['transferring']) >0 : print(' - crab state transfer: ', len(filelistsMissing['transferring']))
+if len(filelistsMissing['running'])     >0  : print(' - crab state running : ', len(filelistsMissing['running']))
+if len(filelistsMissing['failed'])      >0  : print(' - crab state failed  : ', len(filelistsMissing['failed']))
+if len(filelistsMissing['other']) > 0       : print(' - crab state ??      : ', len(filelistsMissing['other']))
 
-if len(filelistsMissing['finished']) > 0: print ' Need to resubmit following jobs:'
+if len(filelistsMissing['finished']) > 0: print(' Need to resubmit following jobs:')
 for jobId in filelistsMissing['finished']:
-    print jobId
+    print(jobId)
     
 
 ###################################################################
@@ -174,8 +177,8 @@ if args.r:
 #        print reportOut
         nEvtsRead          = reportOut['numEventsRead']
         lumiProccessedFile = '%s/%s/%s' % (os.getcwd(),dirToCheck,'results/processedLumis.json')
-    except:
-        print "Crab command report failed ... "
+    except Exception as e:
+        print("Crab command report failed ...", e)
         
     
 
@@ -185,9 +188,9 @@ if args.r:
 if not args.hadd: sys.exit(0)
 
 outDir  = dirToCheck 
-outFile = '%s/TnPTree_%s_%s.root' % (outDir,dasDataset,config.General.requestName)
-print 'hadd will be saved to %s ' % outFile
-print ' - if file is moved properly to eos one should remove it (not automated for now)'
+outFile = '/eos/cms/%s/TnPTree_%s_%s.root' % (config.Data.outLFNDirBase,dasDataset,config.General.requestName)
+print('hadd will be saved to %s ' % outFile)
+print(' - if file is moved properly to eos one should remove it (not automated for now)')
 
 dataset = {}
 dataset['campaign'] = config.General.workArea
@@ -196,7 +199,7 @@ dataset['file' ]    = '%s/%s' % (config.Data.outLFNDirBase,os.path.basename(outF
 dataset['nEvts']    = nEvtsRead
 dataset['lumiProcessedFile' ]  = lumiProccessedFile
 dataset['lumi' ]    = -1
-print dataset
+print(dataset)
 
 filelistTohAdd  = filelistsDone['finished']
 if args.addAll:
@@ -205,7 +208,7 @@ if args.addAll:
     filelistTohAdd += filelistsDone['failed']
     filelistTohAdd += filelistsDone['other']
 
-print 'Hadding %d files ' % len(filelistTohAdd)
+print('Hadding %d files ' % len(filelistTohAdd))
 
 if args.dry_run:
     sys.exit(0)
@@ -213,6 +216,6 @@ if args.dry_run:
 haddCommand = ['hadd','-f',outFile]
 haddCommand += filelistTohAdd
 
+# merge directly on eos
 subprocess.call(haddCommand)
-subprocess.call(['mv',outFile,'/eos/cms/%s'%config.Data.outLFNDirBase])
-
+# subprocess.call(['mv',outFile,'/eos/cms/%s'%config.Data.outLFNDirBase])
