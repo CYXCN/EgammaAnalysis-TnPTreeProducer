@@ -26,6 +26,7 @@ registerOption('doTrigger',   False,    'Include tree for trigger SF')
 registerOption('doRECO',      False,    'Include tree for Reco SF (requires AOD)')
 registerOption('calibEn',     False,    'Use EGM smearer to calibrate photon and electron energy')
 registerOption('includeSUSY', False,    'Add also the variables used by SUSY')
+registerOption('isTagPho',    False,    'Use photon as tag')
 
 registerOption('HLTname',     'HLT',    'HLT process name (default HLT)', optionType=VarParsing.varType.string) # HLTname was HLT2 in now outdated reHLT samples
 registerOption('GT',          'auto',   'Global Tag to be used', optionType=VarParsing.varType.string)
@@ -33,6 +34,14 @@ registerOption('era',         '2018',   'Data-taking era: 2016, 2017, 2018, 2022
 registerOption('logLevel',    'INFO',   'Loglevel: could be DEBUG, INFO, WARNING, ERROR', optionType=VarParsing.varType.string)
 
 registerOption('L1Threshold',  0,       'Threshold for L1 matched objects', optionType=VarParsing.varType.int)
+
+SEEDED_PHOTONS_CUTS = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && pt> 30"
+UNSEEDED_PHOTONS_CUTS = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && pt> 22"
+UNIFIED_PHOTON_CUTS = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && pt> 18"  # to be used in case both seeded and unseeded are run in the same job
+#move from 20 to 18 to cover the possible scale and smearing migration
+SEEDED_ELECTRON_CUTS = SEEDED_PHOTONS_CUTS
+UNSEEDED_ELECTRON_CUTS = UNSEEDED_PHOTONS_CUTS
+UNIFIED_ELECTRON_CUTS = UNSEEDED_PHOTONS_CUTS  # to be used in case both seeded and unseeded are run in the same job
 
 varOptions.parseArguments()
 
@@ -78,6 +87,7 @@ options['ELECTRON_CUTS']        = "ecalEnergy*sin(superCluster.position.theta)>5
 options['SUPERCLUSTER_CUTS']    = "abs(eta)<2.5 &&  et>5.0"
 options['PHOTON_CUTS']          = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && pt> 10"
 options['ELECTRON_TAG_CUTS']    = "(abs(-log(tan(superCluster.position.theta/2)))<=2.5) && !(1.4442<=abs(-log(tan(superCluster.position.theta/2)))<=1.566) && pt >= 30.0"
+options['PHOTON_TAG_CUTS']      = options['ELECTRON_TAG_CUTS']
 
 options['MAXEVENTS']            = cms.untracked.int32(varOptions.maxEvents)
 options['DoTrigger']            = varOptions.doTrigger
@@ -89,8 +99,15 @@ options['DEBUG']                = False
 options['isMC']                 = varOptions.isMC
 options['UseCalibEn']           = varOptions.calibEn
 options['addSUSY']              = varOptions.includeSUSY and not options['useAOD']
+options['isTagPho']             = varOptions.isTagPho
 
 options['OUTPUT_FILE_NAME']     = "TnPTree_%s.root" % ("mc" if options['isMC'] else "data")
+
+options['DoTagSeededLegMatch'] = False
+options['TagSeededLegFilters']    = None
+options['PHOTON_CUTS'] = UNIFIED_PHOTON_CUTS
+options['ELECTRON_CUTS'] = UNIFIED_ELECTRON_CUTS
+
 
 log.info('outputfile: %s' % options['OUTPUT_FILE_NAME'])
 
@@ -148,6 +165,38 @@ doubleEle33_leg1_allFilters = {'passHLTEGL1SingleAndDoubleEGNonIsoOrWithEG26With
 #HLT_DoubleEle33_CaloIdL_MW
 doubleEle33_leg2_allFilters = {'passHLTDiEG33EtUnseededFilter': cms.vstring('hltDiEG33EtUnseededFilter'), 'passHLTDiEG33HEUnseededFilter': cms.vstring('hltDiEG33HEUnseededFilter'), 'passHLTDiEG33CaloIdLClusterShapeUnseededFilter': cms.vstring('hltDiEG33CaloIdLClusterShapeUnseededFilter'), 'passHLTDiEle33CaloIdLPixelMatchUnseededFilter': cms.vstring('hltDiEle33CaloIdLPixelMatchUnseededFilter')}
 
+
+leg_era_config = {
+  '2022': {
+    'seeded': ['hltEG30LR9Id85b90eHE12R9Id50b80eR9IdLastFilter','hltEG30LIso60CaloId15b35eHE12R9Id50b80eEcalIsoLastFilter'],
+    'unseeded': ['hltEG22Iso60CaloId15b35eHE12R9Id50b80eTrackIsoUnseededLastFilter','hltEG22R9Id85b90eHE12R9Id50b80eR9UnseededLastFilter'],
+  },
+  '2023': {
+    'seeded': ['hltEG30LR9Id85b90eHE12R9Id50b80eR9IdLastFilter','hltEG30LIso60CaloId15b35eHE12R9Id50b80eEcalIsoLastFilter'],
+    'unseeded': ['hltEG22Iso60CaloId15b35eHE12R9Id50b80eTrackIsoUnseededLastFilter','hltEG22R9Id85b90eHE12R9Id50b80eR9UnseededLastFilter'],
+  },
+  '2024': {
+    'seeded': ['hltEG30LR9Id85b90eHE12R9Id50b80eR9IdLastFilter','hltEG30LIso60CaloId15b35eHE12R9Id50b80eEcalIsoLastFilter'],
+    'unseeded': ['hltEG22Iso60CaloId15b35eHE12R9Id50b80eTrackIsoUnseededLastFilter','hltEG22R9Id85b90eHE12R9Id50b80eR9UnseededLastFilter'],
+  },
+  '2025': {
+    'seeded': ['hltEG30LR9Id85b90eHE12R9Id50b80eR9IdLastFilter','hltEG30LIso60CaloId15b35eHE12R9Id50b80eEcalIsoLastFilter'],
+    'unseeded': ['hltEG22Iso60CaloId15b35eHE12R9Id50b80eTrackIsoUnseededLastFilter','hltEG22R9Id85b90eHE12R9Id50b80eR9UnseededLastFilter'],
+  },
+}
+if options['era'] in leg_era_config:
+  options['DoTagSeededLegMatch'] = True
+  options['TagSeededLegFilters'] = leg_era_config[options['era']]['seeded']
+  this_era_config = leg_era_config[options['era']]
+  leg_filters = {}
+  postfix = ['', 'L1match']
+  for filterName in this_era_config['seeded'] + this_era_config['unseeded']:
+    for pf in postfix:
+      log.info(f'Adding filter for tag/probe matching: pass{filterName}{pf}')
+      leg_filters[f'pass{filterName}{pf}'] = cms.vstring(filterName)
+else:
+  leg_filters = {}
+
 if '2016' in options['era']:
   options['TnPPATHS']           = cms.vstring("HLT_Ele27_eta2p1_WPTight_Gsf_v*")
   options['TnPHLTTagFilters']   = cms.vstring("hltEle27erWPTightGsfTrackIsoFilter")
@@ -204,6 +253,8 @@ elif '2023' in options['era'] or '2024' in options['era'] or '2025' in options['
   options['HLTFILTERSTOMEASURE'].update(doubleEle33_leg1_allFilters)
   options['HLTFILTERSTOMEASURE'].update(doubleEle33_leg2_allFilters)
 
+options['HLTFILTERSTOMEASURE'].update(leg_filters)
+
 # Apply L1 matching (using L1Threshold) when flag contains "L1match" in name
 options['ApplyL1Matching']      = any(['L1match' in flag for flag in options['HLTFILTERSTOMEASURE'].keys()])
 options['L1Threshold']          = varOptions.L1Threshold
@@ -252,6 +303,11 @@ pileUpSetup.setPileUpConfiguration(process, options)
 import EgammaAnalysis.TnPTreeProducer.egmTreesContent_cff as tnpVars
 if options['useAOD']: tnpVars.setupTnPVariablesForAOD()
 mcTruthCommonStuff = tnpVars.getTnPVariablesForMCTruth(options['isMC'])
+if options['isTagPho']:
+    tnpVars.CommonStuffForGsfElectronProbe.tagVariables = tnpVars.TagPhoVariablesToStore
+    tnpVars.CommonStuffForPhotonProbe.tagVariables = tnpVars.TagPhoVariablesToStore
+    tnpVars.CommonStuffForSuperClusterProbe.tagVariables = tnpVars.TagPhoVariablesToStore
+    mcTruthCommonStuff.tagMatches = cms.InputTag("genTagPho")
 
 ###################################################################
 ## Import Tnp setup
@@ -283,8 +339,15 @@ process.maxEvents = cms.untracked.PSet( input = options['MAXEVENTS'])
 ## Define sequences and TnP pairs
 ###################################################################
 process.cand_sequence = cms.Sequence( process.init_sequence + process.tag_sequence )
-if options['DoEleID'] or options['DoTrigger'] : process.cand_sequence += process.ele_sequence
-if options['DoPhoID']                         : process.cand_sequence += process.pho_sequence
+add_ele_sequence = False
+add_pho_sequence = False
+if options['DoTrigger']:
+  if options['isTagPho']:
+    add_pho_sequence = True
+  else:
+    add_ele_sequence = True
+if options['DoEleID'] or add_ele_sequence     : process.cand_sequence += process.ele_sequence
+if options['DoPhoID'] or add_pho_sequence     : process.cand_sequence += process.pho_sequence
 if options['DoTrigger']                       : process.cand_sequence += process.hlt_sequence
 if options['DoRECO']                          : process.cand_sequence += process.sc_sequence
 
@@ -299,15 +362,30 @@ if options['DoPhoID']   : process.tnpPairs_sequence *= process.tnpPairingPhoIDs
 ##########################################################################
 process.tnpEleTrig = cms.EDAnalyzer("TagProbeFitTreeProducer",
                                     mcTruthCommonStuff,
-                                    tnpVars.CommonStuffForGsfElectronProbe,
+                                    tnpVars.CommonStuffForGsfElectronProbe if not options['isTagPho'] else tnpVars.CommonStuffForPhotonProbe,
                                     tagProbePairs = cms.InputTag("tnpPairingEleHLT"),
-                                    probeMatches  = cms.InputTag("genProbeEle"),
-                                    allProbes     = cms.InputTag("probeEle"),
+                                    probeMatches  = cms.InputTag("genProbeEle") if not options['isTagPho'] else cms.InputTag("genProbePho"),
+                                    allProbes     = cms.InputTag("probeEle") if not options['isTagPho'] else cms.InputTag("probePho"),
                                     flags         = cms.PSet(),
                                     )
 
+if not hasattr(process.tnpEleTrig, 'tagFlags'):
+    process.tnpEleTrig.tagFlags = cms.PSet()
+tagName = "tagEle" if not options['isTagPho'] else "tagPho"
+matchSeededLegName = tagName + "MatchSeededLeg"
+# fix tag match, now it is correctly stored in tagFlags
+if hasattr(process, matchSeededLegName):
+    setattr(process.tnpEleTrig.tagFlags, 'MatchSeededLeg', cms.InputTag(matchSeededLegName))
+# Add individual seeded leg filter flags if they exist, incase logic changed in future
+for attr in dir(process):
+    if attr.startswith(matchSeededLegName) and attr != matchSeededLegName:
+        flagName = "Match" + attr[len(matchSeededLegName):]
+        setattr(process.tnpEleTrig.tagFlags, flagName, cms.InputTag(attr))
+
 for flag in options['HLTFILTERSTOMEASURE']:
-  setattr(process.tnpEleTrig.flags, flag, cms.InputTag(flag))
+  # FIX: Only add flags that actually exist in the process.
+  if hasattr(process, flag):
+    setattr(process.tnpEleTrig.flags, flag, cms.InputTag(flag))
 
 
 process.tnpEleReco = cms.EDAnalyzer("TagProbeFitTreeProducer",
@@ -337,8 +415,14 @@ process.tnpEleIDs = cms.EDAnalyzer("TagProbeFitTreeProducer",
 # Simply look which probeEleX modules were made in egmElectronIDModules_cff.py and convert them into a passingX boolean in the tree 
 for probeEleModule in str(process.ele_sequence).split('+'):
   if not 'probeEle' in probeEleModule or probeEleModule in ['probeEle', 'probeEleL1matched']: continue
-  setattr(process.tnpEleTrig.flags, probeEleModule.replace('probeEle', 'passing'), cms.InputTag(probeEleModule))
+  if not options['isTagPho']:
+    setattr(process.tnpEleTrig.flags, probeEleModule.replace('probeEle', 'passing'), cms.InputTag(probeEleModule))
   setattr(process.tnpEleIDs.flags,  probeEleModule.replace('probeEle', 'passing'), cms.InputTag(probeEleModule))
+# do the same for probPho modules when isTagPho
+if options['isTagPho']:
+  for probPhoModule in str(process.pho_sequence).split('+'):
+    if not 'probePho' in probPhoModule or probPhoModule=='probePho': continue
+    setattr(process.tnpEleTrig.flags, probPhoModule.replace('probePho', 'passing'), cms.InputTag(probPhoModule))
 
 
 

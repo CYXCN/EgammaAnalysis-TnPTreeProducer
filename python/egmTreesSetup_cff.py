@@ -44,7 +44,7 @@ def setTagsProbes(process, options):
         dR_matchL1_EE= dR_settings.get('dR_matchL1_EE',dR_matchL1_EE)
 
 
-    def setupTag(process, options, label, inputCollection, producerType, dR_tag):
+    def setupTag(process, options, label, inputCollection, producerType, dR_tag, orForSeeded=True):
         tagName = "tag" + label
         
         # 1. Tag Producer
@@ -58,10 +58,44 @@ def setTagsProbes(process, options):
                                 )
         setattr(process, tagName, module)
 
+        # 2. Tagged leg seeded matching if required
+        if options.get('DoTagSeededLegMatch', False):
+            seeded_filters = options.get('TagSeededLegFilters', [])
+            # Filter out L1 match filters if any, usually seeded filters are HLT
+            filters_to_use = [f for f in seeded_filters if not f.endswith('L1match')]
+            
+            matchSeededLegName = tagName + "MatchSeededLeg"
+            
+            moduleSeeded = cms.EDProducer(producerType,
+                                filterNames = cms.vstring(filters_to_use),
+                                inputs      = cms.InputTag(tagName),
+                                bits        = cms.InputTag('TriggerResults::' + options['HLTProcessName']),
+                                objects     = cms.InputTag(hltObjects),
+                                dR          = cms.double(dR_tag),
+                                isAND       = cms.bool(False)  if orForSeeded else cms.bool(True)
+                            )
+            setattr(process, matchSeededLegName, moduleSeeded)
+
+            do_seperate = True
+            if do_seperate:
+                for filter in filters_to_use:
+                    singleFilterName = matchSeededLegName + filter.replace('::','_').replace('*','All').replace('.','_').replace('-','_')
+                    moduleSingle = cms.EDProducer(producerType,
+                                        filterNames = cms.vstring(filter),
+                                        inputs      = cms.InputTag(tagName),
+                                        bits        = cms.InputTag('TriggerResults::' + options['HLTProcessName']),
+                                        objects     = cms.InputTag(hltObjects),
+                                        dR          = cms.double(dR_tag),
+                                        isAND       = cms.bool(False)  if orForSeeded else cms.bool(True)
+                                    )
+                    setattr(process, singleFilterName, moduleSingle)
+    
     ##################### TAG ELECTRONs ###########################
     setupTag(process, options, "Ele", "tagEleCutBasedTight", eleHLTProducer, dR_tagEle)
+    ##################### TAG PHOTONs #############################
+    setupTag(process, options, "Pho", "tagPhoCutBasedTight", gamHLTProducer, dR_tagPho)
 
-    def setupProbe(process, options, label, inputCollection, producerType, dR_probe, l1ProducerType=None):
+    def setupProbe(process, options, label, inputCollection, producerType, dR_probe, doHLT = True, l1ProducerType=None):
         probeName = "probe" + label
         passHLTName = probeName + "PassHLT"
         
@@ -76,6 +110,8 @@ def setTagsProbes(process, options):
                                 )
         setattr(process, probeName, _module)
 
+        if not doHLT:
+            return
         # 2. PassHLT Producer (Probe matched to specific filters)
         setattr(process, passHLTName, 
                 _module.clone(
@@ -117,12 +153,21 @@ def setTagsProbes(process, options):
 
     if options['ApplyL1Matching']:
         log.info("L1 matching will be applied for %s" % ', '.join([f.replace('L1match','') for f in options['HLTFILTERSTOMEASURE'].keys() if 'L1match' in f]))
+    
+    # only one for HLT, default: when tag is electron, probe is electron; when tag is photon, probe is photon
+    inverseForHLT = options.get('InverseForHLT', False) # only for tag is photon case
+    if options.get('isTagPho', False):
+        EleForHLT, PhoForHLT = False, True
+    else:
+        EleForHLT, PhoForHLT = True, False
+        if inverseForHLT:
+            EleForHLT, PhoForHLT = not EleForHLT, not PhoForHLT
 
     ##################### PROBE ELECTRONs ###########################
-    setupProbe(process, options, "Ele", "goodElectrons", eleHLTProducer, dR_tagEle, "PatElectronL1Stage2CandProducer")
+    setupProbe(process, options, "Ele", "goodElectrons", eleHLTProducer, dR_tagEle, EleForHLT, "PatElectronL1Stage2CandProducer")
 
     ###################### PROBE PHOTONs ############################
-    setupProbe(process, options, "Pho", "goodPhotons", gamHLTProducer, dR_probePho, None)
+    setupProbe(process, options, "Pho", "goodPhotons", gamHLTProducer, dR_probePho, PhoForHLT, None)
 
     if options['useAOD'] : process.probePho = process.goodPhotons.clone()
 
@@ -169,6 +214,25 @@ def setTagsProbes(process, options):
         process.genProbePho  = process.genTagEle.clone( src = cms.InputTag("probePho") )
         process.genProbeSC   = process.genTagEle.clone( src = cms.InputTag("probeSC")  )
 
+        if options['isTagPho']:
+            process.genPho = cms.EDFilter("GenParticleSelector",
+                                          src = cms.InputTag(genParticles),
+                                          cut = cms.string(cut_gen_flashgg), # in photon collection, we indeeded want electron
+                                          )
+            process.genTagPho = cms.EDProducer("MCMatcher",
+                                            src      = cms.InputTag("tagPho"),
+                                            matched  = cms.InputTag("genPho"),
+                                            mcStatus = cms.vint32(),
+                                            mcPdgId  = cms.vint32(),
+                                            checkCharge = cms.bool(False),
+                                            maxDeltaR   = cms.double(0.20),   # Minimum deltaR for the match
+                                            maxDPtRel   = cms.double(50.0),    # Minimum deltaPt/Pt for the match
+                                            resolveAmbiguities    = cms.bool(False), # Forbid two RECO objects to match to the same GEN objec
+                                            resolveByMatchQuality = cms.bool(True),  # False = just match input in order; True = pick lowest deltaR pair first
+                                            )
+            process.genProbePho = process.genTagPho.clone( src = cms.InputTag("probePho") )
+            process.genProbeSC  = process.genTagPho.clone( src = cms.InputTag("probeSC")  )
+
 
     ########################### TnP pairs ############################
     masscut = cms.string("50<mass<130")
@@ -189,6 +253,16 @@ def setTagsProbes(process, options):
     process.tnpPairingPhoIDs             = process.tnpPairingEleHLT.clone()
     process.tnpPairingPhoIDs.decay       = cms.string("tagEle probePho")
     process.tnpPairingPhoIDs.checkCharge = cms.bool(False)
+
+    if options['isTagPho']:
+        if not options.get('InverseForHLT', False):
+            process.tnpPairingEleHLT.decay       = cms.string("tagPho probePho")
+        else:
+            process.tnpPairingEleHLT.decay       = cms.string("tagPho probeEle")
+        process.tnpPairingEleHLT.checkCharge = cms.bool(False)
+        process.tnpPairingEleRec.decay       = cms.string("tagPho probeSC")
+        process.tnpPairingEleIDs.decay       = cms.string("tagPho probeEle")
+        process.tnpPairingPhoIDs.decay       = cms.string("tagPho probePho")
 
 
 ###################################################################################
@@ -220,8 +294,8 @@ def setSequences(process, options):
     process.ele_sequence  = egmEleID.setIDs(process, options)
     process.ele_sequence += cms.Sequence(process.probeEle)
 
-    if options['ApplyL1Matching']:
-      process.ele_sequence += process.goodElectronProbesL1
+    if options['ApplyL1Matching'] and not options['isTagPho']:
+      process.ele_sequence += process.goodEleProbesL1
       process.ele_sequence += process.probeEleL1matched
 
     process.tag_sequence = cms.Sequence(
@@ -229,6 +303,26 @@ def setSequences(process, options):
         process.tagEleCutBasedTight       + # note: this one also gets introduced by the egmEleID.setIDs function
         process.tagEle
         )
+    
+    if options['isTagPho']:
+        process.tag_sequence = cms.Sequence(
+            process.goodPhotons +
+            process.tagPhoCutBasedTight +
+            process.tagPho
+        )
+
+    # Add tagged leg seeded matching if required, to run seeded and unseeded in the same job
+    if options.get('DoTagSeededLegMatch', False):
+        tagName = "tagEle" if not options['isTagPho'] else "tagPho"
+        matchSeededLegName = tagName + "MatchSeededLeg"
+        
+        # Add the combined seeded leg match module
+        process.tag_sequence += getattr(process, matchSeededLegName)
+        
+        # Add individual filter match modules if they exist
+        for attr in dir(process):
+            if attr.startswith(matchSeededLegName) and attr != matchSeededLegName:
+                process.tag_sequence += getattr(process, attr)
 
     import EgammaAnalysis.TnPTreeProducer.egmPhotonIDModules_cff as egmPhoID
     process.pho_sequence  = cms.Sequence(process.goodPhotons)
@@ -241,10 +335,13 @@ def setSequences(process, options):
             process.hlt_sequence += getattr(process, flag)
 
     if options['isMC'] :
-        process.tag_sequence += process.genEle + process.genTagEle
+        if not options['isTagPho']:
+            process.tag_sequence += process.genEle + process.genTagEle
         process.ele_sequence += process.genProbeEle
         process.pho_sequence += process.genProbePho
         process.sc_sequence  += process.genProbeSC
+        if options['isTagPho']:
+            process.tag_sequence += process.genPho + process.genTagPho
 
     process.init_sequence += process.egmGsfElectronIDSequence
     process.init_sequence += process.egmPhotonIDSequence

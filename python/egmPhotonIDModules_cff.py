@@ -35,6 +35,12 @@ def setIDs(process, options):
     process.photonIDValueMapProducer.src  = cms.InputTag(options['PHOTON_COLL'])
     process.photonMVAValueMapProducer.src = cms.InputTag(options['PHOTON_COLL'])
 #    process.photonMVAValueMapProducer.src        = cms.InputTag(options['PHOTON_COLL'])
+    process.tagPhoCutBasedTight = cms.EDProducer('PhotonSelectorByValueMap' if options['useAOD'] else 'PatPhotonSelectorByValueMap',
+                                                     input     = cms.InputTag("goodPhotons"),
+                                                     cut       = cms.string(options['PHOTON_TAG_CUTS']),
+                                                     selection = cms.InputTag("egmPhotonIDs:cutBasedPhotonID-RunIIIWinter22-122X-V1-loose"), #?
+                                                     id_cut    = cms.bool(True)
+                                                )
 
     #
     # Add many probe modules, use the PatPhotonNm1Selector in case we want to check the effect of one cut
