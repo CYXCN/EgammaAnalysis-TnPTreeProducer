@@ -150,8 +150,12 @@ void ElectronVariableHelper<T>::produce(edm::Event & iEvent, const edm::EventSet
 
   std::vector<float> seedGains; // seed gain for scales
 
-  const auto& recHitsEBProd = iEvent.get(recHitsEBToken_);
-  const auto& recHitsEEProd = iEvent.get(recHitsEEToken_);
+  // safe retrieval of recHits: use getByToken and check availability to avoid ProductNotFound
+  edm::Handle<EcalRecHitCollection> recHitsEBH, recHitsEEH;
+  bool hasRecHitsEB = iEvent.getByToken(recHitsEBToken_, recHitsEBH);
+  bool hasRecHitsEE = iEvent.getByToken(recHitsEEToken_, recHitsEEH);
+  const EcalRecHitCollection* recHitsEBProd = hasRecHitsEB ? recHitsEBH.product() : nullptr;
+  const EcalRecHitCollection* recHitsEEProd = hasRecHitsEE ? recHitsEEH.product() : nullptr;
 
   typename std::vector<T>::const_iterator probe, endprobes = probes->end();
 
@@ -260,12 +264,21 @@ void ElectronVariableHelper<T>::produce(edm::Event & iEvent, const edm::EventSet
     // seed gain loop
 
     auto detid = probe->superCluster()->seed()->seed();
-    const auto& coll = probe->isEB() ? recHitsEBProd : recHitsEEProd;
-    auto seed = coll.find(detid);
     float tmpSeedVal = 12.0;
-    if (seed != coll.end()){
-        if (seed->checkFlag(EcalRecHit::kHasSwitchToGain6)) tmpSeedVal = 6.0;
-        if (seed->checkFlag(EcalRecHit::kHasSwitchToGain1)) tmpSeedVal = 1.0;
+    // helper to update seed gain from a recHit collection
+    auto updateSeedGainFromRecHit = [&tmpSeedVal, &detid](const auto* recHits) {
+      if (!recHits) return;
+      auto it = recHits->find(detid);
+      if (it != recHits->end()) {
+        if (it->checkFlag(EcalRecHit::kHasSwitchToGain6)) tmpSeedVal = 6.0;
+        if (it->checkFlag(EcalRecHit::kHasSwitchToGain1)) tmpSeedVal = 1.0;
+      }
+    };
+    // only access recHits if present
+    if (probe->isEB()) {
+      updateSeedGainFromRecHit(recHitsEBProd);
+    } else {
+      updateSeedGainFromRecHit(recHitsEEProd);
     }
     seedGains.push_back(tmpSeedVal);
   }
