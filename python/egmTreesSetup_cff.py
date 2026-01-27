@@ -27,56 +27,103 @@ def setTagsProbes(process, options):
     else:
         goodPartDef.setGoodParticlesMiniAOD( process, options )
 
+    # dR settings
+    dR_tagEle = 0.1
+    dR_tagPho = 0.1
+    dR_probePho = 0.1
+    dR_probeSC = 0.1
+    dR_matchL1 = 0.2
+    dR_matchL1_EE = 0.2
+    if options['DRSEETING'] != None:
+        dR_settings = options['DRSEETING']
+        dR_tagEle    = dR_settings.get('dR_tagEle',    dR_tagEle)
+        dR_tagPho    = dR_settings.get('dR_tagPho',    dR_tagPho)
+        dR_probePho  = dR_settings.get('dR_probePho',  dR_probePho)
+        dR_probeSC   = dR_settings.get('dR_probeSC',   dR_probeSC)
+        dR_matchL1   = dR_settings.get('dR_matchL1',   dR_matchL1)
+        dR_matchL1_EE= dR_settings.get('dR_matchL1_EE',dR_matchL1_EE)
 
-    ####################### TAG ELECTRON ############################
-    process.tagEle = cms.EDProducer(eleHLTProducer,
-                                        filterNames = cms.vstring(options['TnPHLTTagFilters']),
-                                        inputs      = cms.InputTag("tagEleCutBasedTight"),
-                                        bits        = cms.InputTag('TriggerResults::' + options['HLTProcessName']),
-                                        objects     = cms.InputTag(hltObjects),
-                                        dR          = cms.double(0.3),
-                                        isAND       = cms.bool(True)
-                                    )
+
+    def setupTag(process, options, label, inputCollection, producerType, dR_tag):
+        tagName = "tag" + label
+        
+        # 1. Tag Producer
+        module = cms.EDProducer(producerType,
+                                filterNames = cms.vstring(options['TnPHLTTagFilters']),
+                                inputs      = cms.InputTag(inputCollection),
+                                bits        = cms.InputTag('TriggerResults::' + options['HLTProcessName']),
+                                objects     = cms.InputTag(hltObjects),
+                                dR          = cms.double(dR_tag),
+                                isAND       = cms.bool(True)
+                                )
+        setattr(process, tagName, module)
+
+    ##################### TAG ELECTRONs ###########################
+    setupTag(process, options, "Ele", "tagEleCutBasedTight", eleHLTProducer, dR_tagEle)
+
+    def setupProbe(process, options, label, inputCollection, producerType, dR_probe, l1ProducerType=None):
+        probeName = "probe" + label
+        passHLTName = probeName + "PassHLT"
+        
+        # 1. Probe Producer (Reco matched to HLT)
+        _module = cms.EDProducer(producerType,
+                                filterNames = cms.vstring(options['TnPHLTProbeFilters']),
+                                inputs      = cms.InputTag(inputCollection),
+                                bits        = cms.InputTag('TriggerResults::' + options['HLTProcessName']),
+                                objects     = cms.InputTag(hltObjects),
+                                dR          = cms.double(dR_probe),
+                                isAND       = cms.bool(True)
+                                )
+        setattr(process, probeName, _module)
+
+        # 2. PassHLT Producer (Probe matched to specific filters)
+        setattr(process, passHLTName, 
+                _module.clone(
+                    inputs = cms.InputTag(probeName),
+                    isAND  = cms.bool(False)
+                ))
+
+        # 3. L1 Matching
+        probeL1MatchedName = probeName + "L1matched"
+        passHLTL1MatchedName = passHLTName + "L1matched"
+        hasL1 = False
+
+        if options['ApplyL1Matching'] and l1ProducerType:
+            hasL1 = True
+            l1ProbesName = "good" + label + "ProbesL1"
+            setattr(process, l1ProbesName,
+                    cms.EDProducer(l1ProducerType,
+                                   inputs       = cms.InputTag(inputCollection),
+                                   objects      = cms.InputTag("caloStage2Digis:EGamma"),
+                                   minET        = cms.double(options['L1Threshold']),
+                                   dRmatch      = cms.double(dR_matchL1),
+                                   dRmatchEE    = cms.double(dR_matchL1_EE),
+                                   isolatedOnly = cms.bool(False)
+                    ))
+            
+            setattr(process, probeL1MatchedName,
+                    getattr(process, probeName).clone(inputs = cms.InputTag(l1ProbesName)))
+            setattr(process, passHLTL1MatchedName,
+                    getattr(process, passHLTName).clone(inputs = cms.InputTag(probeL1MatchedName)))
+
+        # 4. HLT Filters
+        for flag, filterNames in options['HLTFILTERSTOMEASURE'].items():
+
+            isL1 = 'L1match' in flag
+            if isL1 and not hasL1: continue # Skip L1 flags if this probe doesn't support L1
+
+            srcName = passHLTL1MatchedName if isL1 else passHLTName
+            setattr(process, flag, getattr(process, srcName).clone(filterNames=filterNames))
+
+    if options['ApplyL1Matching']:
+        log.info("L1 matching will be applied for %s" % ', '.join([f.replace('L1match','') for f in options['HLTFILTERSTOMEASURE'].keys() if 'L1match' in f]))
 
     ##################### PROBE ELECTRONs ###########################
-    process.probeEle             = process.tagEle.clone()
-    process.probeEle.filterNames = cms.vstring(options['TnPHLTProbeFilters'])
-    process.probeEle.inputs      = cms.InputTag("goodElectrons")
-
-    ################# PROBE ELECTRONs passHLT #######################
-    process.probeElePassHLT        = process.tagEle.clone()
-    process.probeElePassHLT.inputs = cms.InputTag("probeEle")
-    process.probeElePassHLT.isAND  = cms.bool(False)
-
-    ################# PROBE Matched to L1 #######################
-    if options['ApplyL1Matching']:
-      log.info("L1 matching will be applied for %s" % ', '.join([f.replace('L1match','') for f in options['HLTFILTERSTOMEASURE'].keys() if 'L1match' in f]))
-      process.goodElectronProbesL1 = cms.EDProducer("PatElectronL1Stage2CandProducer",
-                                                  inputs       = cms.InputTag("goodElectrons"),
-                                                  objects      = cms.InputTag("caloStage2Digis:EGamma"),
-                                                  minET        = cms.double(options['L1Threshold']), #lead eff only
-                                                  dRmatch      = cms.double(0.2), #match L1 online to hlt in EB
-                                                  dRmatchEE    = cms.double(0.2), #match L1 online to hlt in EE
-                                                  isolatedOnly = cms.bool(False)
-      )
-      process.probeEleL1matched               = process.probeEle.clone()
-      process.probeEleL1matched.inputs        = cms.InputTag("goodElectronProbesL1")
-      process.probeElePassHLTL1matched        = process.probeElePassHLT.clone()
-      process.probeElePassHLTL1matched.inputs = cms.InputTag("probeEleL1matched")
-
-    for flag, filterNames in options['HLTFILTERSTOMEASURE'].items():
-      if 'L1match' in flag: setattr(process, flag, process.probeElePassHLTL1matched.clone(filterNames=filterNames))
-      else:                 setattr(process, flag, process.probeElePassHLT.clone(filterNames=filterNames))
+    setupProbe(process, options, "Ele", "goodElectrons", eleHLTProducer, dR_tagEle, "PatElectronL1Stage2CandProducer")
 
     ###################### PROBE PHOTONs ############################
-    process.probePho  = cms.EDProducer( gamHLTProducer,
-                                        filterNames = options['TnPHLTProbeFilters'],
-                                        inputs      = cms.InputTag("goodPhotons"),
-                                        bits        = cms.InputTag('TriggerResults::' + options['HLTProcessName'] ),
-                                        objects     = cms.InputTag(hltObjects),
-                                        dR          = cms.double(0.3),
-                                        isAND       = cms.bool(True)
-                                        )
+    setupProbe(process, options, "Pho", "goodPhotons", gamHLTProducer, dR_probePho, None)
+
     if options['useAOD'] : process.probePho = process.goodPhotons.clone()
 
     ######################### PROBE SCs #############################
@@ -85,7 +132,7 @@ def setTagsProbes(process, options):
                                              inputs       = cms.InputTag("goodSuperClusters"),
                                              bits         = cms.InputTag('TriggerResults::' + options['HLTProcessName']),
                                              objects      = cms.InputTag(hltObjects),
-                                             dR           = cms.double(0.3),
+                                             dR           = cms.double(dR_probeSC),
                                              isAND        = cms.bool(True)
                                         )
 
@@ -188,7 +235,8 @@ def setSequences(process, options):
 
     process.hlt_sequence = cms.Sequence( process.hltFilter )
     for flag in options['HLTFILTERSTOMEASURE']:
-        process.hlt_sequence += getattr(process, flag)
+        if hasattr(process, flag):
+            process.hlt_sequence += getattr(process, flag)
 
     if options['isMC'] :
         process.tag_sequence += process.genEle + process.genTagEle

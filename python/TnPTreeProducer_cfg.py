@@ -208,6 +208,15 @@ elif '2023' in options['era'] or '2024' in options['era'] or '2025' in options['
 options['ApplyL1Matching']      = any(['L1match' in flag for flag in options['HLTFILTERSTOMEASURE'].keys()])
 options['L1Threshold']          = varOptions.L1Threshold
 
+# settings for dR value used in filter matching
+options['DRSEETING'] = {
+  'DR_DEFAULT': 0.3,
+  'dR_tagEle': 0.1,
+  'dR_tagPho': 0.1,
+  'dR_matchL1': 0.2,
+  'dR_matchL1_EE': 0.2,
+}
+
 
 ###################################################################
 ## Define input files for test local run
