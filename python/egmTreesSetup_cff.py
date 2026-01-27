@@ -197,6 +197,8 @@ def setTagsProbes(process, options):
 def setSequences(process, options):
 
     process.init_sequence = cms.Sequence()
+    if not options['useAOD']:
+        process.init_sequence += process.patObjectCrossLinker
     if options['UseCalibEn']:
         process.enCalib_sequence = cms.Sequence(
             process.regressionApplication  *
@@ -247,6 +249,7 @@ def setSequences(process, options):
     process.init_sequence += process.egmGsfElectronIDSequence
     process.init_sequence += process.egmPhotonIDSequence
     process.init_sequence += process.eleVarHelper
+    process.init_sequence += process.phoVarHelper
     if options['addSUSY'] : process.init_sequence += process.susy_sequence
     if options['addSUSY'] : process.init_sequence += process.susy_sequence_requiresVID
 
@@ -260,6 +263,17 @@ def setupTreeMaker(process, options) :
     process.hltFilter.throw = cms.bool(True)
     process.hltFilter.HLTPaths = options['TnPPATHS']
     process.hltFilter.TriggerResultsTag = cms.InputTag("TriggerResults","",options['HLTProcessName'])
+
+    if not options['useAOD']:
+        # cross link pat objects for miniAOD, so we can find corresponding electron for a photon and vice versa
+        process.patObjectCrossLinker = cms.EDProducer("PATObjectCrossLinker",
+            electrons = cms.InputTag("slimmedElectrons"),
+            photons = cms.InputTag("slimmedPhotons"),
+            muons = cms.InputTag("slimmedMuons"),
+            jets = cms.InputTag("slimmedJets"),
+            taus = cms.InputTag("slimmedTaus"),
+        )
+        options['PHOTON_COLL'] = "patObjectCrossLinker:photons"
 
     setTagsProbes( process, options )
     setSequences(  process, options )

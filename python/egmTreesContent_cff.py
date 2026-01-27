@@ -142,6 +142,10 @@ EleProbeVariablesToStore = cms.PSet(
     el_seedGain       = cms.InputTag("eleVarHelper:seedGain"),
     #csev
 
+    # new variable needed for scale and smearing:
+    el_energyErr      = cms.string("p4Error('P4_COMBINATION')"), 
+    el_energyErrEcal  = cms.string("ecalEnergyError"),
+
     )
 
 PhoProbeVariablesToStore = cms.PSet(
@@ -151,6 +155,10 @@ PhoProbeVariablesToStore = cms.PSet(
     ph_e      = cms.string("energy"),
     ph_hasPixelSeed = cms.string("hasPixelSeed()"),
     ph_passElectronVeto = cms.string("passElectronVeto()"),
+
+    ph_pt     = cms.string("pt"),
+    ph_phi    = cms.string("phi"),
+    ph_electronIdx = cms.string("?hasUserCand('electron')?userCand('electron').key():-1"),
 
 ## super cluster quantities
     ph_sc_energy    = cms.string("superCluster.energy"),
@@ -194,9 +202,15 @@ PhoProbeVariablesToStore = cms.PSet(
 
 # iso
     ph_chIso    = cms.string("chargedHadronIso"),
+    ph_chIsoPFPV = cms.string("chargedHadronPFPVIso"),
     ph_neuIso   = cms.string("neutralHadronIso"),
     ph_phoIso   = cms.string("photonIso"),
     ph_chWorIso = cms.string("chargedHadronWorstVtxIso"),
+
+    # new variable needed for scale and smearing:
+    ph_seedGain       = cms.InputTag("phoVarHelper:seedGain"),
+    ph_energyErr      = cms.string("getCorrectedEnergyError('regression2')"), 
+
 )
 
 if not isReleaseAbove(10, 6): # old way of accessing these in CMSSW_10_2
@@ -225,6 +239,7 @@ TagVariablesToStore = cms.PSet(
     sc_e      = cms.string("superCluster.energy"),
     sc_et     = cms.string("superCluster.energy*sin(superCluster.position.theta)"),    
     sc_eta    = cms.string("-log(tan(superCluster.position.theta/2))"),
+    sc_phi    = cms.string("superCluster.phi"),
     sc_abseta = cms.string("abs(-log(tan(superCluster.position.theta/2)))"),
     
     ## Ele_mHits          = cms.InputTag("eleVarHelper:missinghits"),
@@ -241,7 +256,11 @@ TagVariablesToStore = cms.PSet(
     #Ele_noIsoMVA94XV2   = cms.InputTag("electronMVAValueMapProducer:ElectronMVAEstimatorRun2Fall17NoIsoV2Values"), 
     #Ele_IsoMVA94XV2     = cms.InputTag("electronMVAValueMapProducer:ElectronMVAEstimatorRun2Fall17IsoV2Values"),
     Ele_noIso122X       = cms.InputTag("electronMVAValueMapProducer:ElectronMVAEstimatorRun2RunIIIWinter22NoIsoV1Values"),
-    Ele_Iso122X       = cms.InputTag("electronMVAValueMapProducer:ElectronMVAEstimatorRun2RunIIIWinter22IsoV1Values")
+    Ele_Iso122X       = cms.InputTag("electronMVAValueMapProducer:ElectronMVAEstimatorRun2RunIIIWinter22IsoV1Values"),
+
+    # new variable needed for scale and smearing:
+    Ele_energyErr      = cms.string("p4Error('P4_COMBINATION')"), 
+    Ele_energyErrEcal  = cms.string("ecalEnergyError"),
     )
 
 CommonStuffForGsfElectronProbe = cms.PSet(
