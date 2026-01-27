@@ -239,6 +239,7 @@ TagVariablesToStore = cms.PSet(
     sc_e      = cms.string("superCluster.energy"),
     sc_et     = cms.string("superCluster.energy*sin(superCluster.position.theta)"),    
     sc_eta    = cms.string("-log(tan(superCluster.position.theta/2))"),
+    sc_phi    = cms.string("superCluster.phi"),
     sc_abseta = cms.string("abs(-log(tan(superCluster.position.theta/2)))"),
     
     ## Ele_mHits          = cms.InputTag("eleVarHelper:missinghits"),
@@ -278,6 +279,7 @@ TagPhoVariablesToStore = cms.PSet(
     sc_e      = cms.string("superCluster.energy"),
     sc_et     = cms.string("superCluster.energy*sin(superCluster.position.theta)"),    
     sc_eta    = cms.string("-log(tan(superCluster.position.theta/2))"),
+    sc_phi    = cms.string("superCluster.phi"),
     sc_abseta = cms.string("abs(-log(tan(superCluster.position.theta/2)))"),
 
     # id based
