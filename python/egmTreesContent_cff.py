@@ -176,7 +176,7 @@ PhoProbeVariablesToStore = cms.PSet(
 
 
 #id based
-    ph_full5x5x_r9   = cms.string("full5x5_r9"),
+    ph_full5x5_r9   = cms.string("full5x5_r9"),
     ph_r9            = cms.string("r9"),
     ph_sieie         = cms.string("full5x5_sigmaIetaIeta"),
     ph_s4            = cms.string("full5x5_showerShapeVariables.e2x2/full5x5_showerShapeVariables.e5x5"),
@@ -204,12 +204,19 @@ PhoProbeVariablesToStore = cms.PSet(
     ph_chIso    = cms.string("chargedHadronIso"),
     ph_chIsoPFPV = cms.string("chargedHadronPFPVIso"),
     ph_neuIso   = cms.string("neutralHadronIso"),
-    ph_phoIso   = cms.string("photonIso"),
+        
     ph_chWorIso = cms.string("chargedHadronWorstVtxIso"),
 
     # new variable needed for scale and smearing:
     ph_seedGain       = cms.InputTag("phoVarHelper:seedGain"),
     ph_energyErr      = cms.string("getCorrectedEnergyError('regression2')"), 
+
+# for HGG Preselection:
+# trkSumPtHollowConeDR03
+    ph_trkSumPtHollowConeDR03 = cms.string("trkSumPtHollowConeDR03"),
+    # pfRelIso03_chg_quadratic = Var("userFloat('PFIsoChgQuadratic')/pt"
+    ph_PFIsoChgQuadratic = cms.InputTag("isoForPho:PFIsoChgQuadratic"),
+    ph_PFIsoAllQuadratic = cms.InputTag("isoForPho:PFIsoAllQuadratic"),
 
 )
 
@@ -302,6 +309,11 @@ TagPhoVariablesToStore = cms.PSet(
     # new variable needed for scale and smearing:
     Pho_seedGain       = cms.InputTag("phoVarHelper:seedGain"),
     Pho_energyErr      = cms.string("getCorrectedEnergyError('regression2')"), 
+
+    # for HGG Preselection:
+    Pho_trkSumPtHollowConeDR03 = cms.string("trkSumPtHollowConeDR03"),
+    Pho_PFIsoChgQuadratic = cms.InputTag("isoForPho:PFIsoChgQuadratic"),
+    Pho_PFIsoAllQuadratic = cms.InputTag("isoForPho:PFIsoAllQuadratic"),
 )
 
 CommonStuffForGsfElectronProbe = cms.PSet(
@@ -317,13 +329,16 @@ CommonStuffForGsfElectronProbe = cms.PSet(
     beamSpot         = cms.InputTag("offlineBeamSpot"),
     addCaloMet       = cms.bool(False),
     pfMet            = cms.InputTag("slimmedMETsPuppi"),
-    rho              = cms.InputTag("fixedGridRhoFastjetAll"),
+    rho              = cms.InputTag("fixedGridRhoAll"),
+    # rhoXAll              = cms.string("fixedGridRhoAll"),
     #    pfMet = cms.InputTag("slimmedMETsNoHF"),
 
     pairFlags     =  cms.PSet(
 #    mass60to120 = cms.string("60 < mass < 120")
         ),
     tagFlags       =  cms.PSet(),    
+
+    # for HGG Preselection:
     
     )
 
