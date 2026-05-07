@@ -81,6 +81,18 @@ def setGoodParticlesMiniAOD(process, options):
                                             eeRecHits        = cms.InputTag("reducedEgamma", "reducedEERecHits"),
     )
 
+    # process.load("PhysicsTools.NanoAOD.isoValueMapProducer_cfi")
+    process.isoForPho = cms.EDProducer("PhoIsoValueMapProducer",
+        src = cms.InputTag(options['PHOTON_COLL']),
+        relative = cms.bool(False),
+        doQuadratic = cms.bool(True),
+        rho_PFIso = cms.InputTag("fixedGridRhoFastjetAll"),
+        QuadraticEAFile_PFIso_Chg  = cms.FileInPath("RecoEgamma/PhotonIdentification/data/RunIII_Winter22/effectiveArea_ChgHadronIso_95percentBased.txt"),
+        QuadraticEAFile_PFIso_ECal = cms.FileInPath("RecoEgamma/PhotonIdentification/data/RunIII_Winter22/effectiveArea_ECalClusterIso_95percentBased.txt"),
+        QuadraticEAFile_PFIso_HCal = cms.FileInPath("RecoEgamma/PhotonIdentification/data/RunIII_Winter22/effectiveArea_HCalClusterIso_95percentBased.txt"),
+    )
+
+
     ####################  Electron collection
     process.goodElectrons = cms.EDFilter("PATElectronRefSelector",
                                          src = cms.InputTag( options['ELECTRON_COLL'] ),

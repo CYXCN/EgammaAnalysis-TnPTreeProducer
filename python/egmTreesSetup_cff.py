@@ -159,7 +159,7 @@ def setTagsProbes(process, options):
     setupProbe(process, options, "Ele", "goodElectrons", eleHLTProducer, dR_tagEle, options.get('isTagPho', False),"PatElectronL1Stage2CandProducer")
 
     ###################### PROBE PHOTONs ############################
-    setupProbe(process, options, "Pho", "goodPhotons", gamHLTProducer, dR_probePho, options.get('isTagPho', False), None)
+    setupProbe(process, options, "Pho", "goodPhotons", gamHLTProducer, dR_probePho, options.get('isTagPho', False), "PatPhotonL1Stage2CandProducer")
 
     if options['useAOD'] : process.probePho = process.goodPhotons.clone()
 
@@ -293,6 +293,9 @@ def setSequences(process, options):
     if options['ApplyL1Matching'] and not options['isTagPho']:
       process.ele_sequence += process.goodEleProbesL1
       process.ele_sequence += process.probeEleL1matched
+    if options['ApplyL1Matching'] and options['isTagPho']:
+      process.pho_sequence += process.goodPhoProbesL1
+      process.pho_sequence += process.probePhoL1matched
 
     process.tag_sequence = cms.Sequence(
         process.goodElectrons             +
@@ -338,6 +341,7 @@ def setSequences(process, options):
     process.init_sequence += process.egmPhotonIDSequence
     process.init_sequence += process.eleVarHelper
     process.init_sequence += process.phoVarHelper
+    process.init_sequence += process.isoForPho
     if options['addSUSY'] : process.init_sequence += process.susy_sequence
     if options['addSUSY'] : process.init_sequence += process.susy_sequence_requiresVID
 
