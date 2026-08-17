@@ -12,3 +12,6 @@ DEFINE_FWK_MODULE(GsfElectronL1Stage2CandProducer);
 //typedef MiniAODL1CandProducer<pat::Photon> PatPhotonL1CandProducer;
 //DEFINE_FWK_MODULE(PatPhotonL1CandProducer);
 
+typedef MiniAODL1Stage2CandProducer<pat::Photon> PatPhotonL1Stage2CandProducer;
+DEFINE_FWK_MODULE(PatPhotonL1Stage2CandProducer);
+
